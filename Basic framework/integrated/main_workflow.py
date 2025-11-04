@@ -89,7 +89,7 @@ class Group3MainWorkflow:
             ("locations_affordable_normalized.csv", "HRSA/EHB"),
             ("locations_affordable_plpfile.csv", "NPI Registry"),
             ("Placesaffordablehealth_cleaned.csv", "Google Places"),
-            ("SAMHSA_cleaned .csv", "SAMHSA"),
+            ("SAMHSA_cleaned.csv", "SAMHSA"),
             ("nsumhss_affordability_min(Janet).csv", "NSUMHSS Survey"),
             
             # Other possible locations
