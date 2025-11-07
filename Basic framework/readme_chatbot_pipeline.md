@@ -133,7 +133,7 @@ ls Group3_dataset/all_facilities_scored.csv
 
 ## 🎯 Usage
 
-### Option 1: Run Complete Pipeline (Recommended)
+### Main entrypoint — Run complete pipeline (Recommended)
 
 ```bash
 python3 chatbot_pipeline.py
