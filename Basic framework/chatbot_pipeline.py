@@ -445,6 +445,88 @@ Remember: You are not alone. Help is available right now.
     return resources
 
 
+def assess_crisis_severity(user_message, crisis_result):
+    """
+    Assess the severity level of a crisis situation.
+    
+    Uses the crisis detection result to determine urgency and provide
+    appropriate guidance for the level of support needed.
+    
+    Args:
+        user_message: The user's message that triggered crisis detection
+        crisis_result: Result dict from detect_crisis_hybrid()
+    
+    Returns:
+        dict with:
+        {
+            'severity': str ('immediate' | 'high' | 'moderate' | 'low'),
+            'urgency_score': int (1-10),
+            'recommended_action': str,
+            'details': dict
+        }
+    """
+    message_lower = user_message.lower()
+    confidence = crisis_result.get('confidence', 0)
+    
+    # Immediate danger indicators
+    immediate_keywords = [
+        'right now', 'tonight', 'today', 'plan to', 'planning', 'going to',
+        'about to', 'ready to', 'have a gun', 'have pills', 'overdose',
+        'jump', 'hanging', 'cut my wrists'
+    ]
+    
+    # High urgency indicators
+    high_urgency_keywords = [
+        'want to die', 'wish i was dead', 'better off dead', 'ending it',
+        'kill myself', 'suicide', 'take my life', 'end my life'
+    ]
+    
+    # Moderate urgency indicators
+    moderate_keywords = [
+        'thoughts of', 'thinking about', 'sometimes think', 'crossed my mind',
+        "can't go on", 'no point', 'give up', 'hopeless'
+    ]
+    
+    has_immediate = any(kw in message_lower for kw in immediate_keywords)
+    has_high_urgency = any(kw in message_lower for kw in high_urgency_keywords)
+    has_moderate = any(kw in message_lower for kw in moderate_keywords)
+    
+    # Determine severity
+    if has_immediate:
+        severity = 'immediate'
+        urgency_score = 10
+        recommended_action = 'Call 911 immediately or go to nearest emergency room'
+    elif has_high_urgency and confidence > 0.8:
+        severity = 'high'
+        urgency_score = 8
+        recommended_action = 'Call 988 (Suicide Prevention Lifeline) now - available 24/7'
+    elif has_high_urgency or (has_moderate and confidence > 0.7):
+        severity = 'high'
+        urgency_score = 7
+        recommended_action = 'Call 988 or text HOME to 741741 for immediate support'
+    elif has_moderate:
+        severity = 'moderate'
+        urgency_score = 5
+        recommended_action = 'Contact crisis support (988 or Crisis Text Line) soon'
+    else:
+        severity = 'low'
+        urgency_score = 3
+        recommended_action = 'Consider reaching out to mental health professional'
+    
+    return {
+        'severity': severity,
+        'urgency_score': urgency_score,
+        'recommended_action': recommended_action,
+        'details': {
+            'has_immediate_danger': has_immediate,
+            'has_high_urgency': has_high_urgency,
+            'has_moderate_concern': has_moderate,
+            'confidence': confidence,
+            'method': crisis_result.get('method', 'unknown')
+        }
+    }
+
+
 def display_free_resource_info():
     """
     Display information about free and low-cost mental health resources.
@@ -1094,8 +1176,35 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
     method = crisis_result['method']
     
     if is_crisis:
+        # Assess crisis severity for appropriate response
+        severity_assessment = assess_crisis_severity(concern_text, crisis_result)
+        severity = severity_assessment['severity']
+        urgency_score = severity_assessment['urgency_score']
+        
         # Display comprehensive emergency resources immediately
         print("\n" + display_emergency_resources())
+        
+        # Display severity-specific guidance
+        if severity == 'immediate':
+            print("\n" + "╔" + "═"*68 + "╗")
+            print("║" + " ⚠️  IMMEDIATE DANGER - URGENT ACTION NEEDED ⚠️ ".center(68) + "║")
+            print("╚" + "═"*68 + "╝")
+            print(f"\n🚨 Urgency Level: {urgency_score}/10 - IMMEDIATE")
+            print(f"📞 {severity_assessment['recommended_action']}")
+            print("\nIf you cannot call:")
+            print("  • Go to your nearest emergency room")
+            print("  • Ask someone nearby to help you")
+            print("  • Text 911 if available in your area\n")
+        elif severity == 'high':
+            print("\n" + "┌" + "─"*68 + "┐")
+            print("│" + " 🆘 HIGH URGENCY - Please Reach Out Now ".center(68) + "│")
+            print("└" + "─"*68 + "┘")
+            print(f"\n🚨 Urgency Level: {urgency_score}/10 - HIGH")
+            print(f"📞 {severity_assessment['recommended_action']}")
+            print("\nYou don't have to face this alone. Help is available right now.\n")
+        else:
+            print(f"\n🚨 Urgency Level: {urgency_score}/10")
+            print(f"📞 {severity_assessment['recommended_action']}\n")
         
         print(f"🚢 Harbor: {user_name}, I'm really glad you reached out to me.")
         print("          What you're feeling is serious, and I want you to know")
@@ -1109,7 +1218,9 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
             'is_crisis': True,
             'response_given': True,
             'detection_method': method,
-            'confidence': confidence
+            'confidence': confidence,
+            'severity': severity,
+            'urgency_score': urgency_score
         }
     
     # Non-crisis but still empathetic acknowledgment
@@ -1679,6 +1790,51 @@ def run_pipeline():
             if symptoms:
                 print(f"✓ You mentioned: {symptoms[:100]}{'...' if len(symptoms) > 100 else ''}")
             print()
+            
+            # Feature 7: Comprehensive Symptom Assessment (for non-crisis cases)
+            # Ask targeted follow-up questions based on category
+            print("🚢 Harbor: To find the best support for you, it helps to know a bit more.\n")
+            
+            symptom_details = {}
+            category_lower = category.lower() if category else ""
+            
+            if 'anxiety' in category_lower or 'panic' in category_lower:
+                duration = input("🚢 Harbor: How long have you been experiencing anxiety?\n          (e.g., few weeks, months, years) or press Enter to skip: ").strip()
+                if duration:
+                    symptom_details['duration'] = duration
+                
+                triggers = input("🚢 Harbor: Are there specific situations that trigger your anxiety?\n          or press Enter to skip: ").strip()
+                if triggers:
+                    symptom_details['triggers'] = triggers
+                    
+            elif 'depression' in category_lower or 'mood' in category_lower:
+                duration = input("🚢 Harbor: How long have you been feeling this way?\n          (e.g., few weeks, months, years) or press Enter to skip: ").strip()
+                if duration:
+                    symptom_details['duration'] = duration
+                
+                impact = input("🚢 Harbor: Is this affecting your daily activities (work, relationships, sleep)?\n          (yes/no/somewhat) or press Enter to skip: ").strip()
+                if impact:
+                    symptom_details['daily_impact'] = impact
+                    
+            elif 'substance' in category_lower or 'addiction' in category_lower:
+                substance_type = input("🚢 Harbor: What substance(s) are you concerned about?\n          or press Enter to skip: ").strip()
+                if substance_type:
+                    symptom_details['substance_type'] = substance_type
+                
+                seeking_treatment = input("🚢 Harbor: Are you looking for detox, outpatient, or ongoing support?\n          or press Enter to skip: ").strip()
+                if seeking_treatment:
+                    symptom_details['treatment_preference'] = seeking_treatment
+            else:
+                # General mental health
+                urgency = input("🚢 Harbor: How urgently do you need support?\n          (immediate, within a week, within a month) or press Enter to skip: ").strip()
+                if urgency:
+                    symptom_details['urgency'] = urgency
+            
+            # Update symptoms with additional details
+            if symptom_details:
+                symptoms = f"{symptoms}. Additional details: {', '.join([f'{k}: {v}' for k, v in symptom_details.items()])}"
+            
+            print()
         
     except Exception as e:
         print(f"Note: Had trouble extracting info ({e}), will ask directly...")
@@ -1764,7 +1920,8 @@ def run_pipeline():
             print("🚢 Harbor: I'll also search for facilities that offer sliding scale fees")
             print("          or accept patients without insurance.\n")
     
-    # Insurance type (if they have insurance)
+    # Insurance type (if they have insurance) - Feature 5: Detailed Insurance Information
+    insurance_details = {}
     if insurance_status == 'yes' and not insurance_type and turn_count < max_turns:
         insurance_type_prompt = "🚢 Harbor: What type of insurance? (e.g., Medicaid, Medicare, Blue Cross)\n\nYou: "
         insurance_type = ""
@@ -1774,6 +1931,29 @@ def run_pipeline():
                 print("🚢 Harbor: Please enter your insurance provider name.\n")
         conversation_history.append({'role': 'USER', 'message': insurance_type})
         turn_count += 1
+        
+        # Additional insurance details for better matching
+        print("\n🚢 Harbor: Just a couple more quick questions about your insurance:")
+        print("          (These help me find facilities that accept your specific plan)\n")
+        
+        # Ask about plan type if it's a major provider
+        insurance_lower = insurance_type.lower()
+        if any(provider in insurance_lower for provider in ['blue cross', 'bcbs', 'aetna', 'cigna', 'unitedhealth', 'united', 'humana']):
+            plan_type = input("🚢 Harbor: What type of plan? (e.g., HMO, PPO, EPO) or press Enter to skip: ").strip()
+            if plan_type:
+                insurance_details['plan_type'] = plan_type
+        
+        # Ask if they know if behavioral health is covered
+        behavioral_coverage = input("🚢 Harbor: Do you know if your plan covers mental health/behavioral health?\n          (yes/no/not sure) or press Enter to skip: ").strip().lower()
+        if behavioral_coverage:
+            if behavioral_coverage.startswith('y'):
+                insurance_details['behavioral_health_covered'] = True
+            elif behavioral_coverage.startswith('n'):
+                insurance_details['behavioral_health_covered'] = False
+            else:
+                insurance_details['behavioral_health_covered'] = 'unknown'
+        
+        print("\n🚢 Harbor: Perfect! This information will help me find the best match.\n")
     
     # Build classification dict
     classification = {
@@ -1787,7 +1967,8 @@ def run_pipeline():
         },
         'insurance': {
             'has_insurance': insurance_status == 'yes' if insurance_status else False,
-            'provider': insurance_type or ''
+            'provider': insurance_type or '',
+            'details': insurance_details if insurance_status == 'yes' else {}
         }
     }
     
@@ -1795,7 +1976,24 @@ def run_pipeline():
     print("│" + " 📍 Information Collected ".center(68) + "│")
     print("└" + "─"*68 + "┘")
     print(f"✓ Location: {city}, {state}")
-    print(f"✓ Insurance: {'Yes (' + insurance_type + ')' if insurance_status == 'yes' and insurance_type else insurance_status or 'Not specified'}")
+    
+    # Display insurance info with details
+    if insurance_status == 'yes' and insurance_type:
+        insurance_display = f"Yes - {insurance_type}"
+        if insurance_details.get('plan_type'):
+            insurance_display += f" ({insurance_details['plan_type']})"
+        print(f"✓ Insurance: {insurance_display}")
+        if 'behavioral_health_covered' in insurance_details:
+            coverage_status = insurance_details['behavioral_health_covered']
+            if coverage_status is True:
+                print(f"  └─ Mental health coverage: ✓ Confirmed")
+            elif coverage_status is False:
+                print(f"  └─ Mental health coverage: ⚠️  Not covered - searching for alternatives")
+            else:
+                print(f"  └─ Mental health coverage: ? Unknown - will verify with facilities")
+    else:
+        print(f"✓ Insurance: {insurance_status or 'Not specified'}")
+    
     print("─"*70)
     
     if is_crisis:
