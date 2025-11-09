@@ -29,6 +29,335 @@ sys.path.insert(0, str(integrated_dir))
 from group2_router import handle_group2_input
 import pandas as pd
 import numpy as np
+import re
+import json
+import requests
+
+# =====================================================
+# Crisis Detection System (Hybrid: Keywords + Embeddings + Gemini)
+# =====================================================
+# This system uses a 3-stage approach for optimal crisis detection:
+#   Stage 1: Fast keyword screening (< 1ms)
+#   Stage 2: Semantic similarity with sentence-transformers (~50ms, local)
+#   Stage 3: Gemini API confirmation for edge cases (~1-2s)
+#
+# Installation: pip install sentence-transformers scikit-learn
+# If sentence-transformers is not available, system falls back to keywords + Gemini
+# =====================================================
+
+# Global variables for crisis detection
+CRISIS_MODEL = None
+CRISIS_EMBEDDINGS = None
+
+# Crisis reference phrases for semantic matching
+CRISIS_REFERENCE_PHRASES = [
+    "I want to kill myself",
+    "I'm thinking about suicide",
+    "I want to end my life",
+    "I'm going to hurt myself",
+    "I don't want to be alive anymore",
+    "Everyone would be better off without me",
+    "I can't take it anymore and want to die",
+    "I want to end it all",
+    "I'm planning to harm myself",
+    "Life isn't worth living",
+    "I wish I was dead",
+    "I'm going to take my own life"
+]
+
+def initialize_crisis_detection():
+    """
+    Initialize the sentence transformer model for crisis detection.
+    Lazy loading - only loads when first needed.
+    """
+    global CRISIS_MODEL, CRISIS_EMBEDDINGS
+    
+    if CRISIS_MODEL is not None:
+        return  # Already initialized
+    
+    try:
+        from sentence_transformers import SentenceTransformer
+        print("[Initializing crisis detection system...]")
+        CRISIS_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+        CRISIS_EMBEDDINGS = CRISIS_MODEL.encode(CRISIS_REFERENCE_PHRASES)
+        print("✓ Crisis detection ready\n")
+    except ImportError:
+        print("⚠️  Warning: sentence-transformers not installed.")
+        print("   Install with: pip install sentence-transformers")
+        print("   Falling back to keyword + Gemini detection.\n")
+        CRISIS_MODEL = False  # Mark as unavailable
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize crisis detection: {e}")
+        print("   Falling back to keyword + Gemini detection.\n")
+        CRISIS_MODEL = False
+
+
+def detect_crisis_semantic(user_message, threshold=0.65):
+    """
+    Stage 2: Use semantic similarity with sentence transformers.
+    
+    Args:
+        user_message: User's message to analyze
+        threshold: Similarity threshold (0-1) for crisis detection
+    
+    Returns:
+        dict with:
+        {
+            'is_crisis': bool,
+            'confidence': float (0-1),
+            'matched_phrase': str,
+            'method': 'semantic'
+        }
+    """
+    global CRISIS_MODEL, CRISIS_EMBEDDINGS
+    
+    if CRISIS_MODEL is None:
+        initialize_crisis_detection()
+    
+    if CRISIS_MODEL is False:
+        # Model unavailable, return uncertain
+        return {
+            'is_crisis': None,
+            'confidence': 0.0,
+            'matched_phrase': None,
+            'method': 'semantic_unavailable'
+        }
+    
+    try:
+        from sklearn.metrics.pairwise import cosine_similarity
+        
+        # Get embedding for user message
+        user_embedding = CRISIS_MODEL.encode([user_message])[0]
+        
+        # Compute cosine similarity with all crisis references
+        similarities = cosine_similarity(
+            [user_embedding], 
+            CRISIS_EMBEDDINGS
+        )[0]
+        
+        max_similarity = float(np.max(similarities))
+        matched_idx = int(np.argmax(similarities))
+        
+        return {
+            'is_crisis': max_similarity > threshold,
+            'confidence': max_similarity,
+            'matched_phrase': CRISIS_REFERENCE_PHRASES[matched_idx],
+            'method': 'semantic'
+        }
+    except Exception as e:
+        print(f"Warning: Semantic crisis detection failed: {e}")
+        return {
+            'is_crisis': None,
+            'confidence': 0.0,
+            'matched_phrase': None,
+            'method': 'semantic_error'
+        }
+
+
+def detect_crisis_gemini(user_message):
+    """
+    Stage 3: Use Gemini API for accurate crisis classification.
+    
+    Args:
+        user_message: User's message to analyze
+    
+    Returns:
+        dict with:
+        {
+            'is_crisis': bool,
+            'confidence': float (0-1),
+            'crisis_type': str,
+            'reasoning': str,
+            'method': 'gemini'
+        }
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
+    except Exception as e:
+        return {
+            'is_crisis': None,
+            'confidence': 0.0,
+            'crisis_type': 'unknown',
+            'reasoning': f'Config error: {e}',
+            'method': 'gemini_error'
+        }
+    
+    if not api_key:
+        return {
+            'is_crisis': None,
+            'confidence': 0.0,
+            'crisis_type': 'unknown',
+            'reasoning': 'API key missing',
+            'method': 'gemini_error'
+        }
+    
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    
+    prompt = f"""Analyze this message for signs of immediate crisis or self-harm intent.
+
+Message: "{user_message}"
+
+Respond ONLY with JSON (no other text):
+{{
+  "is_crisis": true/false,
+  "confidence": 0-100,
+  "crisis_type": "suicide | self-harm | severe_distress | none",
+  "reasoning": "brief explanation"
+}}
+
+Crisis indicators include:
+- Suicidal ideation (wanting to die, ending life, suicide)
+- Self-harm intent (hurting oneself, cutting, harming)
+- Severe hopelessness with despair
+- Giving up on life
+- Phrases like "ending it", "can't go on", "want to die"
+
+NOT crisis:
+- General sadness or anxiety without self-harm intent
+- Seeking help for depression/anxiety
+- Feeling stressed or overwhelmed
+"""
+    
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+    params = {"key": api_key}
+    
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload, timeout=5)
+        response.raise_for_status()
+        result = response.json()
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        
+        # Extract JSON from response
+        match = re.search(r'\{[\s\S]*\}', text)
+        if match:
+            gemini_result = json.loads(match.group(0))
+            return {
+                'is_crisis': gemini_result.get('is_crisis', False),
+                'confidence': gemini_result.get('confidence', 0) / 100.0,
+                'crisis_type': gemini_result.get('crisis_type', 'unknown'),
+                'reasoning': gemini_result.get('reasoning', ''),
+                'method': 'gemini'
+            }
+        else:
+            return {
+                'is_crisis': None,
+                'confidence': 0.0,
+                'crisis_type': 'unknown',
+                'reasoning': 'Failed to parse Gemini response',
+                'method': 'gemini_parse_error'
+            }
+    except Exception as e:
+        return {
+            'is_crisis': None,
+            'confidence': 0.0,
+            'crisis_type': 'unknown',
+            'reasoning': f'Gemini API error: {e}',
+            'method': 'gemini_error'
+        }
+
+
+def detect_crisis_hybrid(user_message):
+    """
+    Hybrid 3-stage crisis detection system.
+    
+    Stage 1: Fast keyword screening (< 1ms)
+    Stage 2: Semantic similarity with embeddings (~50ms, local)
+    Stage 3: Gemini confirmation for edge cases (~1-2s, API)
+    
+    Args:
+        user_message: User's message to analyze
+    
+    Returns:
+        dict with:
+        {
+            'is_crisis': bool,
+            'confidence': float (0-1),
+            'method': str,
+            'details': dict
+        }
+    """
+    message_lower = user_message.lower()
+    
+    # Stage 1: Fast keyword screening
+    urgent_keywords = [
+        'kill', 'suicide', 'suicidal', 'die', 'dying', 'dead',
+        'hurt myself', 'hurting myself', 'harm myself', 'end my life', 'end it',
+        'ending it', 'take my life', 'better off dead', 'better off without',
+        "can't go on", "cant go on", 'give up', 'no point', 'want to die',
+        'cut myself', 'cutting myself', 'self harm', 'self-harm'
+    ]
+    
+    has_urgent_keyword = any(kw in message_lower for kw in urgent_keywords)
+    
+    if not has_urgent_keyword:
+        # No urgent keywords - very likely not a crisis
+        return {
+            'is_crisis': False,
+            'confidence': 0.95,
+            'method': 'keyword_screening',
+            'details': {'stage': 1, 'matched_keyword': None}
+        }
+    
+    # Stage 2: Semantic similarity (if model available)
+    semantic_result = detect_crisis_semantic(user_message, threshold=0.65)
+    
+    if semantic_result['is_crisis'] is not None:
+        # Semantic model worked
+        if semantic_result['confidence'] >= 0.65:
+            # Trust semantic model at 0.65+ confidence (no need for Gemini)
+            return {
+                'is_crisis': semantic_result['is_crisis'],
+                'confidence': semantic_result['confidence'],
+                'method': 'semantic_trusted',
+                'details': {
+                    'stage': 2,
+                    'matched_phrase': semantic_result['matched_phrase']
+                }
+            }
+    
+    # Stage 3: Gemini confirmation (only if semantic failed/unavailable)
+    print("   [Double-checking with AI for safety...]")
+    gemini_result = detect_crisis_gemini(user_message)
+    
+    if gemini_result['is_crisis'] is not None:
+        return {
+            'is_crisis': gemini_result['is_crisis'],
+            'confidence': gemini_result['confidence'],
+            'method': 'gemini_confirmation',
+            'details': {
+                'stage': 3,
+                'crisis_type': gemini_result['crisis_type'],
+                'reasoning': gemini_result['reasoning']
+            }
+        }
+    
+    # All stages failed - default to safe side (treat as crisis if keywords present)
+    return {
+        'is_crisis': True,
+        'confidence': 0.70,
+        'method': 'fallback_safe_default',
+        'details': {
+            'stage': 'fallback',
+            'reason': 'Detected urgent keywords but could not verify with AI'
+        }
+    }
+
+
+# =====================================================
+# State Mapping and Location Parsing
+# =====================================================
+
 import json
 
 # Mapping full state names (lowercase) to 2-letter codes
@@ -355,6 +684,320 @@ def format_facility_results(facilities, output_format='simple'):
 #     # }
 
 # =====================================================
+# Harbor Chatbot Helper Functions
+# =====================================================
+
+def harbor_greet():
+    """
+    Harbor introduces itself and asks for the user's name.
+    Returns Harbor's greeting message.
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
+    except Exception as e:
+        raise RuntimeError(f"Could not read Gemini API key from config.json: {e}")
+    
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in config.json")
+    
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    
+    system_prompt = """You are Harbor, a warm and empathetic mental health assistant. Your mission is to help users find the right mental health support.
+
+Start by greeting the user warmly and asking for their name. Keep your greeting brief and friendly (2-3 sentences max).
+
+Example: "Hello! I'm Harbor, and I'm here to help you find the mental health support you need. What's your name?"
+"""
+    
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": system_prompt}]
+            }
+        ]
+    }
+    params = {"key": api_key}
+    
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        greeting = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return greeting
+    except Exception as e:
+        # Fallback if API fails
+        return "Hello! I'm Harbor, and I'm here to help you find the mental health support you need. What's your name?"
+
+
+def harbor_ask_concern(user_name, conversation_history):
+    """
+    After getting the user's name, Harbor asks what's on their mind.
+    
+    Args:
+        user_name: The user's name
+        conversation_history: List of conversation messages so far
+    
+    Returns:
+        Harbor's response asking about their concern
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
+    except Exception as e:
+        raise RuntimeError(f"Could not read Gemini API key from config.json: {e}")
+    
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in config.json")
+    
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    
+    # Build conversation for Gemini
+    prompt = f"""You are Harbor. The user just told you their name is {user_name}. 
+    
+Respond warmly by:
+1. Acknowledging their name
+2. Asking what's on their mind or how you can help them today
+
+Keep it brief (2-3 sentences) and empathetic.
+
+Example: "Hi {user_name}, it's nice to meet you. What's on your mind today? How can I help you?"
+"""
+    
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+    params = {"key": api_key}
+    
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        message = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return message
+    except Exception as e:
+        # Fallback if API fails
+        return f"Hi {user_name}, it's nice to meet you. What's on your mind today? How can I help you?"
+
+
+def harbor_extract_info(conversation_history):
+    """
+    Extracts structured information from the conversation.
+    
+    Args:
+        conversation_history: List of conversation messages
+    
+    Returns:
+        dict with extracted info and missing fields:
+        {
+            'user_name': str or None,
+            'category': str or None,
+            'confidence': int or None,
+            'symptoms': str or None,
+            'extracted_info': {
+                'city': str or None,
+                'state': str or None,
+                'insurance': str or None,
+                'insurance_type': str or None
+            },
+            'missing_fields': list of field names
+        }
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
+    except Exception as e:
+        raise RuntimeError(f"Could not read Gemini API key from config.json: {e}")
+    
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in config.json")
+    
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    
+    # Build conversation text
+    conversation_text = "\n".join([
+        f"{msg.get('role', 'USER')}: {msg.get('message', '')}"
+        for msg in conversation_history
+    ])
+    
+    extraction_prompt = f"""Based on the conversation below, extract the following information in JSON format.
+If a field is not mentioned, use null.
+
+Conversation:
+{conversation_text}
+
+Extract this JSON (respond ONLY with the JSON, no other text):
+{{
+  "user_name": "name" or null,
+  "category": "mental health | substance abuse | general health | crisis" or null,
+  "confidence": 0-100 or null,
+  "symptoms": "brief description" or null,
+  "extracted_info": {{
+    "city": "city name" or null,
+    "state": "state name or abbreviation" or null,
+    "insurance": "yes | no" or null,
+    "insurance_type": "provider name" or null
+  }},
+  "missing_fields": ["list", "of", "missing", "fields"]
+}}
+
+IMPORTANT: 
+- Only include fields that were explicitly mentioned
+- For location: extract both city and state if mentioned (e.g., "I live in Charlotte" → city="Charlotte", state=null)
+- For insurance: only mark as "yes" or "no" if explicitly stated
+- Missing fields should list: city, state, insurance, insurance_type (if insurance=yes) for any that weren't mentioned
+"""
+    
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": extraction_prompt}]
+            }
+        ]
+    }
+    params = {"key": api_key}
+    
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        
+        # Extract JSON from response
+        import re
+        match = re.search(r'\{[\s\S]*\}', text)
+        if match:
+            extracted = json.loads(match.group(0))
+            return extracted
+        else:
+            # Return default structure if parsing fails
+            return {
+                'user_name': None,
+                'category': None,
+                'confidence': None,
+                'symptoms': None,
+                'extracted_info': {
+                    'city': None,
+                    'state': None,
+                    'insurance': None,
+                    'insurance_type': None
+                },
+                'missing_fields': ['city', 'state', 'insurance']
+            }
+    except Exception as e:
+        print(f"Warning: Info extraction failed: {e}")
+        return {
+            'user_name': None,
+            'category': None,
+            'confidence': None,
+            'symptoms': None,
+            'extracted_info': {
+                'city': None,
+                'state': None,
+                'insurance': None,
+                'insurance_type': None
+            },
+            'missing_fields': ['city', 'state', 'insurance']
+        }
+
+
+def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
+    """
+    Provides empathetic acknowledgment and crisis resources when needed.
+    
+    Uses hybrid crisis detection (keywords + embeddings + Gemini) for accuracy.
+    
+    Args:
+        user_name: User's name
+        user_concern: What the user initially shared
+        symptoms: Extracted symptoms description
+        category: Detected category
+    
+    Returns:
+        dict with:
+        {
+            'is_crisis': bool,
+            'response_given': bool,
+            'detection_method': str
+        }
+    """
+    # Use hybrid crisis detection system
+    concern_text = f"{user_concern} {symptoms}"
+    crisis_result = detect_crisis_hybrid(concern_text)
+    
+    is_crisis = crisis_result['is_crisis']
+    confidence = crisis_result['confidence']
+    method = crisis_result['method']
+    
+    if is_crisis:
+        print("\n" + "╔" + "═"*68 + "╗")
+        print("║" + " 🆘 IMMEDIATE CRISIS SUPPORT ".center(68) + "║")
+        print("╚" + "═"*68 + "╝")
+        print()
+        print(f"🚢 Harbor: {user_name}, I'm really glad you reached out to me.")
+        print("          What you're feeling is serious, and I want you to know")
+        print("          you're not alone. You deserve immediate support.\n")
+        print("   📞 Call 988 - Suicide & Crisis Lifeline (24/7)")
+        print("   💬 Text 'HELLO' to 741741 - Crisis Text Line")
+        print("   🚨 Call 911 if you're in immediate danger\n")
+        print(f"🚢 Harbor: I'm also here to help you find ongoing care and support")
+        print(f"          near you. Let me ask a few questions so I can connect")
+        print(f"          you with the right resources.\n")
+        print("─"*70 + "\n")
+        return {
+            'is_crisis': True,
+            'response_given': True,
+            'detection_method': method,
+            'confidence': confidence
+        }
+    
+    # Non-crisis but still empathetic acknowledgment
+    empathy_messages = {
+        'anxiety': f"🚢 Harbor: {user_name}, thank you for sharing that with me. Anxiety can be\n          really overwhelming, and it takes courage to reach out for help.\n          Let me ask a few questions to find the best resources for you.",
+        'depression': f"🚢 Harbor: {user_name}, I appreciate you opening up about this. Depression\n          can feel isolating, but you're taking an important step by\n          seeking support. Let me ask a few questions to help you.",
+        'substance': f"🚢 Harbor: {user_name}, thank you for trusting me with this. Recognizing you\n          need help with substance use is a brave and important step.\n          Let me ask a few questions to find the best resources for you.",
+        'default': f"🚢 Harbor: {user_name}, thank you for sharing what's going on. I'm here to\n          help you find the support you need. Let me ask a few questions."
+    }
+    
+    # Determine which empathy message to use
+    concern_lower = concern_text.lower()
+    if 'anxi' in concern_lower or 'panic' in concern_lower or 'worry' in concern_lower:
+        message = empathy_messages['anxiety']
+    elif 'depress' in concern_lower or 'sad' in concern_lower or 'hopeless' in concern_lower:
+        message = empathy_messages['depression']
+    elif 'substance' in concern_lower or 'alcohol' in concern_lower or 'drug' in concern_lower or 'drinking' in concern_lower:
+        message = empathy_messages['substance']
+    else:
+        message = empathy_messages['default']
+    
+    print(f"\n{message}\n")
+    print("─"*70 + "\n")
+    
+    return {
+        'is_crisis': False,
+        'response_given': True,
+        'detection_method': method,
+        'confidence': confidence
+    }
+
+
+# =====================================================
 # Gemini Classifier (Active)
 # =====================================================
 import json
@@ -630,13 +1273,11 @@ def call_facility_matcher(classification, additional_info):
         list: facility recommendations (or None if not implemented yet)
     """
     
-    print("\n" + "="*70)
-    print("SEARCHING FOR FACILITIES...")
-    print("="*70)
-    
-    # Use pre-scored CSV if available (fast path)
-    print(f"Category: {classification['category']}")
-    print(f"Confidence: {classification['confidence']:.0%}")
+    print("\n" + "╔" + "═"*68 + "╗")
+    print("║" + "  🏥 FACILITY SEARCH RESULTS  ".center(68) + "║")
+    print("╚" + "═"*68 + "╝")
+    print(f"\n📋 Category: {classification['category']}")
+    print(f"📊 Confidence: {classification['confidence']:.0%}")
 
     # Safely extract city/state from additional_info
     city = None
@@ -650,11 +1291,12 @@ def call_facility_matcher(classification, additional_info):
     else:
         zip_code = None
 
-    location_line = f"Location: {city or 'N/A'}, {state or 'N/A'}"
+    location_line = f"📍 Location: {city or 'N/A'}, {state or 'N/A'}"
     if zip_code:
         location_line += f" {zip_code}"
     print(location_line)
-    print(f"Insurance: {'Yes' if additional_info.get('insurance', {}).get('has_insurance') else 'No'}")
+    print(f"💳 Insurance: {'Yes' if additional_info.get('insurance', {}).get('has_insurance') else 'No'}")
+    print()
 
     scored_csv = root_dir / "Group3_dataset" / "all_facilities_scored.csv"
 
@@ -672,13 +1314,26 @@ def call_facility_matcher(classification, additional_info):
 
             print(f"✓ Found {len(facilities)} facilities (top {min(5, len(facilities))})")
 
-            # Determine desired output format for presentation (default 'simple')
-            output_format = 'simple'
-            if isinstance(additional_info, dict):
-                output_format = additional_info.get('output_format', output_format)
-
-            formatted = format_facility_results(facilities, output_format=output_format)
-            print("\n" + formatted)
+            # Determine desired output format(s)
+            output_format = additional_info.get('output_format', 'simple')
+            
+            if output_format == 'both':
+                # Show both formats
+                print("\n" + "┌" + "─"*68 + "┐")
+                print("│" + "  📄 SIMPLE VIEW  ".center(68) + "│")
+                print("└" + "─"*68 + "┘")
+                formatted_simple = format_facility_results(facilities, output_format='simple')
+                print("\n" + formatted_simple)
+                
+                print("\n" + "┌" + "─"*68 + "┐")
+                print("│" + "  📋 JSON VIEW  ".center(68) + "│")
+                print("└" + "─"*68 + "┘")
+                formatted_json = format_facility_results(facilities, output_format='json')
+                print("\n" + formatted_json)
+            else:
+                # Show single format
+                formatted = format_facility_results(facilities, output_format=output_format)
+                print("\n" + formatted)
 
             return facilities
         except Exception as e:
@@ -704,102 +1359,260 @@ def call_facility_matcher(classification, additional_info):
 
 def run_pipeline():
     """
-    Main pipeline orchestration
+    Main pipeline orchestration with Harbor chatbot
     
-    This is the master function that runs the complete flow:
-    1. Collect conversation via chatbot interface
-    2. Classify the conversation (mock or real LLM)
-    3. Route using group2_router
-    4. If Group 3 → collect info → match facilities
-    5. If not Group 3 → hand off to appropriate group
+    Flow:
+    1. Harbor greets user and asks for name
+    2. Harbor asks what's on their mind
+    3. Extract info from natural conversation
+    4. Fall back to hardcoded prompts for missing fields
+    5. Confirm and proceed to facility matching
     """
     
-    print("\n" + "="*70)
-    print("  MENTAL HEALTH CHATBOT PIPELINE".center(70))
-    print("  AAI6600 Fall 2025 - Group 3".center(70))
-    print("="*70)
-    print("\nWelcome! This system will help connect you with mental health resources.")
-    print("Let's start with a brief conversation to understand your needs.\n")
+    print("\n" + "═"*70)
+    print("  🚢 HARBOR - Mental Health Support Assistant".center(70))
+    print("  AAI6600 Fall 2025".center(70))
+    print("═"*70)
+    print("\nWelcome! I'm here to listen and help you find the support you need.")
+    print()
     
-    # Step 1: Collect conversation
-    print("[Step 1] Starting conversation...")
+    # Initialize conversation tracking
+    conversation_history = []
+    turn_count = 0
+    max_turns = 10
     
-    # Mock conversation for now (will be replaced with chatbot_interface)
-    mock_conversation = [
-        {'role': 'BOT', 'message': 'How can I help you today?'},
-        {'role': 'USER', 'message': "I've been feeling really anxious and need help"},
-        {'role': 'BOT', 'message': 'Can you tell me more about what you\'re experiencing?'},
-        {'role': 'USER', 'message': 'I have panic attacks and trouble sleeping'}
-    ]
+    # Step 1: Harbor greets and asks for name
+    try:
+        harbor_greeting = harbor_greet()
+        print(f"🚢 Harbor: {harbor_greeting}\n")
+        turn_count += 1
+        
+        conversation_history.append({'role': 'BOT', 'message': harbor_greeting})
+        
+        # Get user's name
+        user_name_input = input("You: ").strip()
+        conversation_history.append({'role': 'USER', 'message': user_name_input})
+        turn_count += 1
+        
+        # Extract name from response (simple heuristic)
+        # User might say "My name is Sarah" or just "Sarah"
+        user_name = user_name_input
+        name_match = re.search(r'(?:name is |i\'m |im |call me )([a-zA-Z]+)', user_name_input.lower())
+        if name_match:
+            user_name = name_match.group(1).capitalize()
+        elif ' ' not in user_name_input and len(user_name_input) < 20:
+            user_name = user_name_input.capitalize()
+        
+    except Exception as e:
+        print(f"Note: Harbor greeting had an issue ({e}), continuing with fallback...")
+        user_name = input("What's your name? ").strip()
+        conversation_history.append({'role': 'USER', 'message': user_name})
+        turn_count += 2
     
-    print("✓ Conversation collected\n")
+    # Step 2: Harbor asks what's on their mind
+    print()
+    try:
+        concern_prompt = harbor_ask_concern(user_name, conversation_history)
+        print(f"🚢 Harbor: {concern_prompt}\n")
+        turn_count += 1
+        
+        conversation_history.append({'role': 'BOT', 'message': concern_prompt})
+        
+        # Get user's concern
+        user_concern = input("You: ").strip()
+        conversation_history.append({'role': 'USER', 'message': user_concern})
+        turn_count += 1
+        
+    except Exception as e:
+        print(f"Note: Harbor had an issue ({e}), continuing...")
+        user_concern = input(f"Hi {user_name}, what's on your mind today? ").strip()
+        conversation_history.append({'role': 'USER', 'message': user_concern})
+        turn_count += 1
     
-    # Step 2: Classify the conversation
-    print("[Step 2] Classifying mental health needs...")
-    from data_adapter import adapt_mock_output
-
-    # LLM classification with follow-up loop: keep asking until all required info is present
+    print("\n" + "─"*70)
+    print("⚙️  Analyzing your needs...")
+    print("─"*70 + "\n")
+    
+    # Step 3: Extract information from conversation
+    try:
+        extracted = harbor_extract_info(conversation_history)
+        
+        user_name = extracted.get('user_name') or user_name
+        category = extracted.get('category') or 'Mental health'
+        confidence = extracted.get('confidence') or 70
+        symptoms = extracted.get('symptoms') or user_concern
+        
+        extracted_location = extracted.get('extracted_info', {})
+        city = extracted_location.get('city')
+        state = extracted_location.get('state')
+        insurance_status = extracted_location.get('insurance')  # "yes" or "no" or None
+        insurance_type = extracted_location.get('insurance_type')
+        
+        missing_fields = extracted.get('missing_fields', [])
+        
+        # Check if we need clarification (low confidence or missing category)
+        needs_clarification = False
+        if not category or category.lower() == 'null':
+            needs_clarification = True
+        elif confidence and confidence < 60:
+            needs_clarification = True
+        
+        # Ask for clarification if needed
+        if needs_clarification and turn_count < max_turns:
+            print("─"*70)
+            print("🚢 Harbor: I want to make sure I understand what you're going through.")
+            print("         Can you tell me a bit more? For example:")
+            print("         • Are you dealing with anxiety, depression, or mood issues?")
+            print("         • Concerns about substance use?")
+            print("         • Are you in a crisis situation needing immediate help?")
+            print("         • Something else?")
+            print("─"*70 + "\n")
+            
+            clarification = input("You: ").strip()
+            conversation_history.append({'role': 'USER', 'message': clarification})
+            turn_count += 1
+            
+            print("\n" + "─"*70)
+            print("⚙️  Analyzing with your additional information...")
+            print("─"*70 + "\n")
+            
+            # Re-extract with the additional context
+            try:
+                extracted = harbor_extract_info(conversation_history)
+                category = extracted.get('category') or 'Mental health'
+                confidence = extracted.get('confidence') or 70
+                symptoms = extracted.get('symptoms') or f"{user_concern}. {clarification}"
+                
+                # Update extracted location info (user might have mentioned it in clarification)
+                extracted_location = extracted.get('extracted_info', {})
+                if extracted_location.get('city') and not city:
+                    city = extracted_location.get('city')
+                if extracted_location.get('state') and not state:
+                    state = extracted_location.get('state')
+                if extracted_location.get('insurance') and not insurance_status:
+                    insurance_status = extracted_location.get('insurance')
+                if extracted_location.get('insurance_type') and not insurance_type:
+                    insurance_type = extracted_location.get('insurance_type')
+                
+                missing_fields = extracted.get('missing_fields', [])
+            except Exception as e:
+                print(f"Note: Had trouble with clarification ({e}), continuing...")
+                # Keep original values but update symptoms to include clarification
+                symptoms = f"{user_concern}. {clarification}"
+        
+        # Step 3.5: Empathetic acknowledgment with crisis detection
+        empathy_result = harbor_respond_with_empathy(user_name, user_concern, symptoms, category)
+        is_crisis = empathy_result.get('is_crisis', False)
+        
+        # Show what we understood (unless it was already shown in crisis message)
+        if not is_crisis:
+            print(f"✓ I understand you're looking for help with: {category}")
+            if symptoms:
+                print(f"✓ You mentioned: {symptoms[:100]}{'...' if len(symptoms) > 100 else ''}")
+            print()
+        
+    except Exception as e:
+        print(f"Note: Had trouble extracting info ({e}), will ask directly...")
+        category = 'Mental health'
+        confidence = 70
+        symptoms = user_concern
+        city = None
+        state = None
+        insurance_status = None
+        insurance_type = None
+        missing_fields = ['city', 'state', 'insurance']
+        is_crisis = False
+    
+    # Step 4: Ask for missing information using hardcoded prompts
+    if not is_crisis:
+        print("📋 Getting details to find the best facilities for you...\n")
+    
+    # Check turn limit
+    if turn_count >= max_turns:
+        print("(Switching to quick questions to get you help faster)\n")
+    
+    # Location
+    if not city or not state:
+        if turn_count < max_turns:
+            location_prompt = "🚢 Harbor: To find the best support near you, what city and state are\n          you in? (e.g., Charlotte, NC)\n\nYou: "
+            location_input = input(location_prompt).strip()
+            conversation_history.append({'role': 'USER', 'message': location_input})
+            turn_count += 1
+            
+            # Parse location
+            parsed_city, parsed_state = parse_location_input(location_input)
+            if parsed_city:
+                city = parsed_city
+            if parsed_state:
+                state = parsed_state
+    
+    # If still missing, ask individually
+    if not city and turn_count < max_turns:
+        city = input("🚢 Harbor: What city? ").strip().title()
+        turn_count += 1
+    
+    if not state and turn_count < max_turns:
+        state_input = input("🚢 Harbor: What state? (2-letter code or full name) ").strip()
+        # Normalize state
+        _, state = parse_location_input(f"City {state_input}")
+        if not state:
+            state = state_input.upper() if len(state_input) == 2 else state_input
+        turn_count += 1
+    
+    # Insurance
+    if not insurance_status and turn_count < max_turns:
+        insurance_prompt = "🚢 Harbor: Do you have health insurance? (yes/no)\n\nYou: "
+        insurance_input = input(insurance_prompt).strip().lower()
+        insurance_status = 'yes' if insurance_input.startswith('y') else 'no'
+        conversation_history.append({'role': 'USER', 'message': insurance_input})
+        turn_count += 1
+    
+    # Insurance type (if they have insurance)
+    if insurance_status == 'yes' and not insurance_type and turn_count < max_turns:
+        insurance_type_prompt = "🚢 Harbor: What type of insurance? (e.g., Medicaid, Medicare, Blue Cross)\n\nYou: "
+        insurance_type = input(insurance_type_prompt).strip()
+        conversation_history.append({'role': 'USER', 'message': insurance_type})
+        turn_count += 1
+    
+    # Build classification dict
+    classification = {
+        'category': category,
+        'confidence': confidence / 100.0 if confidence > 1 else confidence,
+        'user_input': symptoms,
+        'symptoms': symptoms,
+        'location': {
+            'city': city,
+            'state': state
+        },
+        'insurance': {
+            'has_insurance': insurance_status == 'yes' if insurance_status else False,
+            'provider': insurance_type or ''
+        }
+    }
+    
+    print("\n" + "─"*70)
+    print(f"✓ Location: {city}, {state}")
+    print(f"✓ Insurance: {'Yes (' + insurance_type + ')' if insurance_status == 'yes' and insurance_type else insurance_status or 'Not specified'}")
+    print("─"*70)
+    
+    if is_crisis:
+        print(f"\n🚢 Harbor: {user_name}, I'm finding crisis and mental health resources")
+        print(f"          in {city} that can help you right now...\n")
+    else:
+        print(f"\n🚢 Harbor: Thank you, {user_name}. I'm searching for the best resources")
+        print(f"          to support you in {city}...\n")
+    
+    # Step 5: Route using group2_router
+    print("─"*70)
+    print("⚙️  Routing to appropriate services...")
+    print("─"*70 + "\n")
     from data_adapter import adapt_llm_output
-    conversation = mock_conversation.copy()
-    required_fields = ['category', 'confidence', 'user_input', 'symptoms', 'location', 'insurance']
-    def has_all_required_fields(classif):
-        if not classif:
-            return False
-        # Check top-level fields
-        for f in required_fields:
-            if f not in classif or classif[f] is None:
-                return False
-        # Check location subfields
-        loc = classif.get('location', {})
-        if not loc or not loc.get('city') or not loc.get('state'):
-            return False
-        # Check insurance subfields
-        ins = classif.get('insurance', {})
-        # Guarantee user is asked for insurance, not inferred/defaulted
-        if 'has_insurance' not in ins or ins['has_insurance'] is None:
-            return False
-        # If Gemini returns has_insurance as False but user was never asked, treat as missing
-        # (This is a heuristic: if conversation never included 'insurance', force Gemini to ask)
-        insurance_asked = any('insurance' in msg.get('message', '').lower() or 'health insurance' in msg.get('message', '').lower() for msg in conversation)
-        # If insurance info is present and valid, skip further insurance questions
-        if ins.get('has_insurance') is not None:
-            # If user has insurance, provider must be present (can be empty string)
-            if ins['has_insurance']:
-                if 'provider' in ins:
-                    return True
-            else:
-                return True
-        if not insurance_asked:
-            return False
-        return True
-
-    while True:
-        raw_classification = gemini_classify_conversation(conversation)
-        # Show Gemini's full response to the user
-        if not has_all_required_fields(raw_classification):
-            print("Gemini says:")
-            followup = raw_classification.get('followup_question') or "Please provide more information."
-            print(followup)
-            user_reply = input("Your answer: ").strip()
-            conversation.append({'role': 'USER', 'message': user_reply})
-        else:
-            # If insurance is present, has_insurance is True, but provider is empty, prompt for provider
-            insurance = raw_classification.get('insurance', {})
-            if insurance.get('has_insurance') and not insurance.get('provider'):
-                provider = input("Who is your insurance provider? (press Enter to skip) ").strip()
-                raw_classification['insurance']['provider'] = provider
-            print("Gemini says:")
-            print(json.dumps(raw_classification, indent=2))
-            classification = adapt_llm_output(raw_classification)
-            print(f"✓ Classification: {classification['category']} ({classification['confidence']:.0%} confidence)\n")
-            break
+    normalized_classification = adapt_llm_output(classification)
     
-    # Step 3: Route using group2_router
-    print("[Step 3] Routing to appropriate group...")
-    is_ours, routing_decision = handle_group2_input(classification)
+    is_ours, routing_decision = handle_group2_input(normalized_classification)
     print(f"✓ {routing_decision['message']}\n")
     
-    # Step 4: Handle based on routing decision
+    # Step 6: Handle based on routing decision
     if not is_ours:
         # Not our category - hand off
         print(f"→ This request should be handled by {routing_decision['branch']}")
@@ -807,14 +1620,14 @@ def run_pipeline():
         return {
             'status': 'handed_off',
             'branch': routing_decision['branch'],
-            'classification': classification
+            'classification': normalized_classification
         }
     
-    # Step 5: Group 3 handles - collect additional info ONLY if Gemini did not provide all required fields
-    location = classification.get('location', {}) or {}
-    insurance = classification.get('insurance', {}) or {}
+    # Step 7: Normalize location from classification
+    location = normalized_classification.get('location', {}) or {}
+    insurance = normalized_classification.get('insurance', {}) or {}
     
-    # Normalize location data from Gemini (city capitalization + state abbreviation)
+    # Normalize location data (city capitalization + state abbreviation)
     if location.get('city') or location.get('state'):
         raw_city = location.get('city', '')
         raw_state = location.get('state', '')
@@ -825,78 +1638,36 @@ def run_pipeline():
         if parsed_state:
             location['state'] = parsed_state
     
-    required_fields = [location.get('city'), location.get('state'), insurance.get('has_insurance')]
-    # zip is optional, provider is optional
-    missing_required = any(f is None or f == '' or f == 'null' for f in required_fields)
-    if missing_required:
-        print("[Step 4] Collecting additional information for facility matching...")
-        def prompt_if_missing(field, prompt_text, validate=None):
-            val = location.get(field) if field in ['city', 'state', 'zip'] else insurance.get(field)
-            if field == 'zip' and val == '':
-                return
-            while val is None or (field == 'zip' and val == ''):
-                val = input(prompt_text).strip()
-                if field == 'zip' and val == '':
-                    break
-                if validate and not validate(val):
-                    print("Invalid input. Please try again.")
-                    val = None
-            if field in ['city', 'state', 'zip']:
-                location[field] = val
-            else:
-                insurance[field] = val
-        if not location.get('city') or location.get('city') == 'null':
-            prompt_if_missing('city', 'What city are you in? ')
-        if not location.get('state') or location.get('state') == 'null':
-            prompt_if_missing('state', 'What state are you in? (2-letter code or full name, e.g., NC or North Carolina) ')
-        if 'zip' not in location or location.get('zip') is None:
-            prompt_if_missing('zip', 'What is your ZIP code? (4 or 5 digits, press Enter to skip) ', lambda z: z == '' or (z.isdigit() and 4 <= len(z) <= 5))
-        if 'has_insurance' not in insurance or insurance.get('has_insurance') is None:
-            prompt_if_missing('has_insurance', 'Do you have health insurance? (yes/no) ', lambda x: x.lower() in ['yes', 'no'])
-        if isinstance(insurance.get('has_insurance'), str):
-            insurance['has_insurance'] = insurance['has_insurance'].lower() == 'yes'
-        if insurance.get('has_insurance') and (not insurance.get('provider')):
-            prompt_if_missing('provider', 'Who is your insurance provider? (press Enter to skip) ')
-        additional_info = {'location': location, 'insurance': insurance}
-        print("✓ Information collected\n")
-    else:
-        additional_info = {'location': location, 'insurance': insurance}
+    additional_info = {'location': location, 'insurance': insurance}
 
-    # Ask user preferred output view (simple vs json). Default to simple.
-    try:
-        view_choice = input("Choose output view - (1) Simple (non-technical)  (2) JSON (technical) [default 1]: ").strip()
-    except EOFError:
-        # non-interactive runs: default to simple
-        view_choice = ''
-
-    if view_choice == '2' or view_choice.lower() in ('json', 'j'):
-        additional_info.setdefault('output_format', 'json')
-    else:
-        additional_info.setdefault('output_format', 'simple')
+    # Always show both output formats (no need to ask user)
+    additional_info['output_format'] = 'both'  # Signal to show both formats
     
-    # Step 6: Match facilities
-    print("[Step 5] Finding facility recommendations...")
-    facilities = call_facility_matcher(classification, additional_info)
+    # Step 8: Match facilities
+    print("─"*70)
+    print("🔍 Searching for facilities...")
+    print("─"*70 + "\n")
+    facilities = call_facility_matcher(normalized_classification, additional_info)
     
-    # Step 7: Display results
-    print("\n" + "="*70)
-    print("PIPELINE COMPLETE")
-    print("="*70)
+    # Step 9: Display results
+    print("\n" + "═"*70)
+    print("  ✅ SEARCH COMPLETE".center(70))
+    print("═"*70)
     
-    if facilities:
-        print(f"\nFound {len(facilities)} recommended facilities:")
-        for i, facility in enumerate(facilities, 1):
-            print(f"{i}. {facility}")
-    else:
-        print("\nFacility matching will be implemented next.")
+    if not facilities:
+        print("\nNote: Facility matching is still being refined.")
     
-    print("\n" + "="*70)
+    print("\n" + "─"*70)
+    print(f"🚢 Harbor: {user_name}, I hope this helps you find the support you need!")
+    print("          Take care, and remember: reaching out is a sign of strength.")
+    print("─"*70)
     
     return {
         'status': 'success',
-        'classification': classification,
+        'classification': normalized_classification,
         'additional_info': additional_info,
-        'facilities': facilities
+        'facilities': facilities,
+        'turn_count': turn_count
     }
 
 
