@@ -1534,8 +1534,13 @@ def run_pipeline():
         
         conversation_history.append({'role': 'BOT', 'message': harbor_greeting})
         
-        # Get user's name
-        user_name_input = input("You: ").strip()
+        # Get user's name with validation
+        user_name_input = ""
+        while not user_name_input:
+            user_name_input = input("You: ").strip()
+            if not user_name_input:
+                print("🚢 Harbor: I'd love to know your name so I can help you better.\n")
+        
         conversation_history.append({'role': 'USER', 'message': user_name_input})
         turn_count += 1
         
@@ -1550,7 +1555,12 @@ def run_pipeline():
         
     except Exception as e:
         print(f"Note: Harbor greeting had an issue ({e}), continuing with fallback...")
-        user_name = input("What's your name? ").strip()
+        user_name_input = ""
+        while not user_name_input:
+            user_name_input = input("What's your name? ").strip()
+            if not user_name_input:
+                print("Please enter your name so I can help you.\n")
+        user_name = user_name_input
         conversation_history.append({'role': 'USER', 'message': user_name})
         turn_count += 2
     
@@ -1563,14 +1573,23 @@ def run_pipeline():
         
         conversation_history.append({'role': 'BOT', 'message': concern_prompt})
         
-        # Get user's concern
-        user_concern = input("You: ").strip()
+        # Get user's concern with validation
+        user_concern = ""
+        while not user_concern:
+            user_concern = input("You: ").strip()
+            if not user_concern:
+                print("🚢 Harbor: Please share what's on your mind - I'm here to listen and help.\n")
+        
         conversation_history.append({'role': 'USER', 'message': user_concern})
         turn_count += 1
         
     except Exception as e:
         print(f"Note: Harbor had an issue ({e}), continuing...")
-        user_concern = input(f"Hi {user_name}, what's on your mind today? ").strip()
+        user_concern = ""
+        while not user_concern:
+            user_concern = input(f"Hi {user_name}, what's on your mind today? ").strip()
+            if not user_concern:
+                print("Please share what's bringing you here today.\n")
         conversation_history.append({'role': 'USER', 'message': user_concern})
         turn_count += 1
     
@@ -1613,7 +1632,12 @@ def run_pipeline():
             print("         • Something else?")
             print("─"*70 + "\n")
             
-            clarification = input("You: ").strip()
+            clarification = ""
+            while not clarification:
+                clarification = input("You: ").strip()
+                if not clarification:
+                    print("🚢 Harbor: Please help me understand what you're experiencing.\n")
+            
             conversation_history.append({'role': 'USER', 'message': clarification})
             turn_count += 1
             
@@ -1682,7 +1706,12 @@ def run_pipeline():
     if not city or not state:
         if turn_count < max_turns:
             location_prompt = "🚢 Harbor: To find the best support near you, what city and state are\n          you in? (e.g., Charlotte, NC)\n\nYou: "
-            location_input = input(location_prompt).strip()
+            location_input = ""
+            while not location_input:
+                location_input = input(location_prompt).strip()
+                if not location_input:
+                    print("🚢 Harbor: I need your location to find resources near you.\n")
+            
             conversation_history.append({'role': 'USER', 'message': location_input})
             turn_count += 1
             
@@ -1695,11 +1724,19 @@ def run_pipeline():
     
     # If still missing, ask individually
     if not city and turn_count < max_turns:
-        city = input("🚢 Harbor: What city? ").strip().title()
+        city = ""
+        while not city:
+            city = input("🚢 Harbor: What city? ").strip().title()
+            if not city:
+                print("🚢 Harbor: Please enter your city.\n")
         turn_count += 1
     
     if not state and turn_count < max_turns:
-        state_input = input("🚢 Harbor: What state? (2-letter code or full name) ").strip()
+        state_input = ""
+        while not state_input:
+            state_input = input("🚢 Harbor: What state? (2-letter code or full name) ").strip()
+            if not state_input:
+                print("🚢 Harbor: Please enter your state.\n")
         # Normalize state
         _, state = parse_location_input(f"City {state_input}")
         if not state:
@@ -1709,7 +1746,12 @@ def run_pipeline():
     # Insurance
     if not insurance_status and turn_count < max_turns:
         insurance_prompt = "🚢 Harbor: Do you have health insurance? (yes/no)\n\nYou: "
-        insurance_input = input(insurance_prompt).strip().lower()
+        insurance_input = ""
+        while not insurance_input:
+            insurance_input = input(insurance_prompt).strip().lower()
+            if not insurance_input:
+                print("🚢 Harbor: Please answer yes or no.\n")
+        
         insurance_status = 'yes' if insurance_input.startswith('y') else 'no'
         conversation_history.append({'role': 'USER', 'message': insurance_input})
         turn_count += 1
@@ -1725,7 +1767,11 @@ def run_pipeline():
     # Insurance type (if they have insurance)
     if insurance_status == 'yes' and not insurance_type and turn_count < max_turns:
         insurance_type_prompt = "🚢 Harbor: What type of insurance? (e.g., Medicaid, Medicare, Blue Cross)\n\nYou: "
-        insurance_type = input(insurance_type_prompt).strip()
+        insurance_type = ""
+        while not insurance_type:
+            insurance_type = input(insurance_type_prompt).strip()
+            if not insurance_type:
+                print("🚢 Harbor: Please enter your insurance provider name.\n")
         conversation_history.append({'role': 'USER', 'message': insurance_type})
         turn_count += 1
     
