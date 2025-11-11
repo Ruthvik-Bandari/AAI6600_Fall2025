@@ -1797,17 +1797,19 @@ IMPORTANT:
         }
 
 
-def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
+def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, language='en'):
     """
     Provides empathetic acknowledgment and crisis resources when needed.
     
     Uses hybrid crisis detection (keywords + embeddings + Gemini) for accuracy.
+    Supports English and Spanish responses.
     
     Args:
         user_name: User's name
         user_concern: What the user initially shared
         symptoms: Extracted symptoms description
         category: Detected category
+        language: 'en' for English, 'es' for Spanish
     
     Returns:
         dict with:
@@ -1831,38 +1833,71 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
         severity = severity_assessment['severity']
         urgency_score = severity_assessment['urgency_score']
         
-        # Display comprehensive emergency resources immediately
-        print("\n" + display_emergency_resources())
-        
-        # Display severity-specific guidance
-        if severity == 'immediate':
-            print("\n" + "╔" + "═"*68 + "╗")
-            print("║" + " ⚠️  IMMEDIATE DANGER - URGENT ACTION NEEDED ⚠️ ".center(68) + "║")
-            print("╚" + "═"*68 + "╝")
-            print(f"\n🚨 Urgency Level: {urgency_score}/10 - IMMEDIATE")
-            print(f"📞 {severity_assessment['recommended_action']}")
-            print("\nIf you cannot call:")
-            print("  • Go to your nearest emergency room")
-            print("  • Ask someone nearby to help you")
-            print("  • Text 911 if available in your area\n")
-        elif severity == 'high':
-            print("\n" + "┌" + "─"*68 + "┐")
-            print("│" + " 🆘 HIGH URGENCY - Please Reach Out Now ".center(68) + "│")
-            print("└" + "─"*68 + "┘")
-            print(f"\n🚨 Urgency Level: {urgency_score}/10 - HIGH")
-            print(f"📞 {severity_assessment['recommended_action']}")
-            print("\nYou don't have to face this alone. Help is available right now.\n")
+        # Display crisis resources in appropriate language
+        if language == 'es':
+            print("\n" + translate_crisis_resources_to_spanish())
+            
+            if severity == 'immediate':
+                print("\n" + "╔" + "═"*68 + "╗")
+                print("║" + " ⚠️  PELIGRO INMEDIATO - ACCIÓN URGENTE NECESARIA ⚠️ ".center(68) + "║")
+                print("╚" + "═"*68 + "╝")
+                print(f"\n🚨 Nivel de Urgencia: {urgency_score}/10 - INMEDIATO")
+                print("📞 Por favor llama al 988 o al 911 AHORA")
+                print("\nSi no puedes llamar:")
+                print("  • Ve a la sala de emergencias más cercana")
+                print("  • Pide ayuda a alguien cerca de ti")
+                print("  • Envía un mensaje de texto al 911 si está disponible\n")
+            elif severity == 'high':
+                print("\n" + "┌" + "─"*68 + "┐")
+                print("│" + " 🆘 ALTA URGENCIA - Por Favor Comunícate Ahora ".center(68) + "│")
+                print("└" + "─"*68 + "┘")
+                print(f"\n🚨 Nivel de Urgencia: {urgency_score}/10 - ALTO")
+                print("📞 Por favor llama al 988 para apoyo inmediato")
+                print("\nNo tienes que enfrentar esto solo/a. La ayuda está disponible ahora.\n")
+            else:
+                print(f"\n🚨 Nivel de Urgencia: {urgency_score}/10")
+                print("📞 Por favor considera llamar al 988 para apoyo\n")
+            
+            print(f"🚢 Harbor: {user_name}, me alegra mucho que te hayas comunicado conmigo.")
+            print("          Lo que estás sintiendo es serio, y quiero que sepas")
+            print("          que no estás solo/a. Por favor usa los recursos de arriba")
+            print("          para apoyo inmediato.\n")
+            print(f"          También estoy aquí para ayudarte a encontrar atención y apoyo")
+            print(f"          continuo cerca de ti. Déjame hacerte algunas preguntas para")
+            print(f"          conectarte con los recursos locales correctos.\n")
         else:
-            print(f"\n🚨 Urgency Level: {urgency_score}/10")
-            print(f"📞 {severity_assessment['recommended_action']}\n")
+            # English crisis response
+            print("\n" + display_emergency_resources())
+            
+            if severity == 'immediate':
+                print("\n" + "╔" + "═"*68 + "╗")
+                print("║" + " ⚠️  IMMEDIATE DANGER - URGENT ACTION NEEDED ⚠️ ".center(68) + "║")
+                print("╚" + "═"*68 + "╝")
+                print(f"\n🚨 Urgency Level: {urgency_score}/10 - IMMEDIATE")
+                print(f"📞 {severity_assessment['recommended_action']}")
+                print("\nIf you cannot call:")
+                print("  • Go to your nearest emergency room")
+                print("  • Ask someone nearby to help you")
+                print("  • Text 911 if available in your area\n")
+            elif severity == 'high':
+                print("\n" + "┌" + "─"*68 + "┐")
+                print("│" + " 🆘 HIGH URGENCY - Please Reach Out Now ".center(68) + "│")
+                print("└" + "─"*68 + "┘")
+                print(f"\n🚨 Urgency Level: {urgency_score}/10 - HIGH")
+                print(f"📞 {severity_assessment['recommended_action']}")
+                print("\nYou don't have to face this alone. Help is available right now.\n")
+            else:
+                print(f"\n🚨 Urgency Level: {urgency_score}/10")
+                print(f"📞 {severity_assessment['recommended_action']}\n")
+            
+            print(f"🚢 Harbor: {user_name}, I'm really glad you reached out to me.")
+            print("          What you're feeling is serious, and I want you to know")
+            print("          you're not alone. Please use the resources above for")
+            print("          immediate support.\n")
+            print(f"          I'm also here to help you find ongoing care and support")
+            print(f"          near you. Let me ask a few questions so I can connect")
+            print(f"          you with the right local resources.\n")
         
-        print(f"🚢 Harbor: {user_name}, I'm really glad you reached out to me.")
-        print("          What you're feeling is serious, and I want you to know")
-        print("          you're not alone. Please use the resources above for")
-        print("          immediate support.\n")
-        print(f"          I'm also here to help you find ongoing care and support")
-        print(f"          near you. Let me ask a few questions so I can connect")
-        print(f"          you with the right local resources.\n")
         print("─"*70 + "\n")
         return {
             'is_crisis': True,
@@ -1873,21 +1908,29 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
             'urgency_score': urgency_score
         }
     
-    # Non-crisis but still empathetic acknowledgment
-    empathy_messages = {
-        'anxiety': f"🚢 Harbor: {user_name}, thank you for sharing that with me. Anxiety can be\n          really overwhelming, and it takes courage to reach out for help.\n          Let me ask a few questions to find the best resources for you.",
-        'depression': f"🚢 Harbor: {user_name}, I appreciate you opening up about this. Depression\n          can feel isolating, but you're taking an important step by\n          seeking support. Let me ask a few questions to help you.",
-        'substance': f"🚢 Harbor: {user_name}, thank you for trusting me with this. Recognizing you\n          need help with substance use is a brave and important step.\n          Let me ask a few questions to find the best resources for you.",
-        'default': f"🚢 Harbor: {user_name}, thank you for sharing what's going on. I'm here to\n          help you find the support you need. Let me ask a few questions."
-    }
+    # Non-crisis empathetic acknowledgment
+    if language == 'es':
+        empathy_messages = {
+            'anxiety': f"🚢 Harbor: {user_name}, gracias por compartir esto conmigo. La ansiedad puede ser\n          muy abrumadora, y se necesita valentía para buscar ayuda.\n          Déjame hacerte algunas preguntas para encontrar los mejores recursos para ti.",
+            'depression': f"🚢 Harbor: {user_name}, agradezco que te hayas abierto sobre esto. La depresión\n          puede ser aislante, pero estás dando un paso importante al\n          buscar apoyo. Déjame hacerte algunas preguntas para ayudarte.",
+            'substance': f"🚢 Harbor: {user_name}, gracias por confiar en mí con esto. Reconocer que\n          necesitas ayuda con el uso de sustancias es un paso valiente e importante.\n          Déjame hacerte algunas preguntas para encontrar los mejores recursos para ti.",
+            'default': f"🚢 Harbor: {user_name}, gracias por compartir lo que está pasando. Estoy aquí\n          para ayudarte a encontrar el apoyo que necesitas. Déjame hacerte algunas preguntas."
+        }
+    else:
+        empathy_messages = {
+            'anxiety': f"🚢 Harbor: {user_name}, thank you for sharing that with me. Anxiety can be\n          really overwhelming, and it takes courage to reach out for help.\n          Let me ask a few questions to find the best resources for you.",
+            'depression': f"🚢 Harbor: {user_name}, I appreciate you opening up about this. Depression\n          can feel isolating, but you're taking an important step by\n          seeking support. Let me ask a few questions to help you.",
+            'substance': f"🚢 Harbor: {user_name}, thank you for trusting me with this. Recognizing you\n          need help with substance use is a brave and important step.\n          Let me ask a few questions to find the best resources for you.",
+            'default': f"🚢 Harbor: {user_name}, thank you for sharing what's going on. I'm here to\n          help you find the support you need. Let me ask a few questions."
+        }
     
-    # Determine which empathy message to use
+    # Determine which empathy message to use (works for both English and Spanish keywords)
     concern_lower = concern_text.lower()
-    if 'anxi' in concern_lower or 'panic' in concern_lower or 'worry' in concern_lower:
+    if any(word in concern_lower for word in ['anxi', 'panic', 'worry', 'ansiedad', 'pánico', 'preocup']):
         message = empathy_messages['anxiety']
-    elif 'depress' in concern_lower or 'sad' in concern_lower or 'hopeless' in concern_lower:
+    elif any(word in concern_lower for word in ['depress', 'sad', 'hopeless', 'triste', 'sin esperanza', 'deprim']):
         message = empathy_messages['depression']
-    elif 'substance' in concern_lower or 'alcohol' in concern_lower or 'drug' in concern_lower or 'drinking' in concern_lower:
+    elif any(word in concern_lower for word in ['substance', 'alcohol', 'drug', 'drinking', 'sustancia', 'droga', 'bebida', 'adicción']):
         message = empathy_messages['substance']
     else:
         message = empathy_messages['default']
@@ -1901,6 +1944,78 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
         'detection_method': method,
         'confidence': confidence
     }
+
+
+# =====================================================
+# Language Detection & Translation (Phase 3 Enhancement)
+# =====================================================
+
+def detect_language(text):
+    """
+    Detect if the user is speaking Spanish based on common Spanish words/patterns.
+    
+    Args:
+        text: User's message text
+    
+    Returns:
+        str: 'es' for Spanish, 'en' for English
+    """
+    text_lower = text.lower()
+    
+    # Common Spanish indicators that are unlikely to appear in English
+    SPANISH_INDICATORS = [
+        'estoy', 'siento', 'tengo', 'necesito', 'quiero', 'puedo',
+        'muy', 'porque', 'cuando', 'como', 'donde', 'quien',
+        'ansiosa', 'ansioso', 'triste', 'deprimido', 'deprimida',
+        'ayuda', 'salud mental', 'terapeuta', 'psicólogo', 'psicóloga',
+        'ataques', 'pánico', 'esperanza', 'dormir', 'sueño',
+        'me siento', 'no puedo', 'sin esperanza', 'con miedo'
+    ]
+    
+    # Check for Spanish indicators
+    spanish_matches = sum(1 for indicator in SPANISH_INDICATORS if indicator in text_lower)
+    
+    # If 2+ Spanish indicators found, classify as Spanish
+    if spanish_matches >= 2:
+        return 'es'
+    
+    # Single indicator: check if it's a strong one
+    strong_indicators = ['estoy', 'siento', 'tengo', 'necesito', 'me siento', 'no puedo']
+    if any(indicator in text_lower for indicator in strong_indicators):
+        return 'es'
+    
+    return 'en'
+
+
+def translate_crisis_resources_to_spanish():
+    """
+    Return crisis resources translated to Spanish.
+    Uses the same US resources but with Spanish text.
+    """
+    return """
+╔══════════════════════════════════════════════════════════════════════╗
+║           🆘 APOYO INMEDIATO DISPONIBLE 24/7 (Recursos en EE.UU.)    ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+📞 **988 - Línea de Prevención del Suicidio y Crisis**
+    Llama o envía un mensaje de texto al 988 en cualquier momento
+    Apoyo gratuito y confidencial (servicio en español disponible)
+
+💬 **Línea de Texto en Crisis**
+    Envía HOLA al 741741
+    Asesoramiento de crisis gratuito por texto (español disponible)
+
+🚨 **Servicios de Emergencia**
+    Llama al 911 para asistencia de emergencia inmediata
+
+💙 **TheAdamProject.org**
+    1,300+ proveedores de salud mental gratuitos en todo EE.UU.
+
+📞 **Línea Nacional de Prevención del Suicidio (en español)**
+    1-888-628-9454
+    Disponible 24/7 con consejeros que hablan español
+══════════════════════════════════════════════════════════════════════
+"""
 
 
 # =====================================================
@@ -1934,7 +2049,7 @@ def classify_user_intent_lightweight(user_message):
     
     # Define keyword sets for each category
     MENTAL_HEALTH_KEYWORDS = {
-        # Core mental health terms
+        # Core mental health terms (English)
         'anxiety', 'anxious', 'panic', 'worried', 'worry', 'fear', 'scared',
         'depression', 'depressed', 'sad', 'hopeless', 'suicidal', 'suicide',
         'therapy', 'therapist', 'counseling', 'counselor', 'psychiatrist',
@@ -1949,7 +2064,22 @@ def classify_user_intent_lightweight(user_message):
         'crisis', 'emergency', 'help me', 'need help',
         'lonely', 'loneliness', 'isolated', 'isolation',
         'insomnia', 'sleep problems', 'nightmares', 'cant sleep',
-        'medication', 'meds', 'prescription', 'antidepressant'
+        'medication', 'meds', 'prescription', 'antidepressant',
+        # Spanish mental health terms
+        'ansiedad', 'ansioso', 'ansiosa', 'pánico', 'preocupado', 'preocupada', 'miedo',
+        'depresión', 'deprimido', 'deprimida', 'triste', 'sin esperanza', 'suicida', 'suicidio',
+        'terapia', 'terapeuta', 'consejería', 'consejero', 'psiquiatra', 'psicólogo', 'psicóloga',
+        'salud mental', 'mental', 'emocional', 'siento', 'sentimientos',
+        'estrés', 'estresado', 'estresada', 'abrumado', 'abrumada', 'agotamiento',
+        'trauma', 'abuso', 'duelo', 'pérdida',
+        'autolesión', 'cortándome', 'lastimándome',
+        'bipolar', 'esquizofrenia', 'psicosis', 'alucinaciones',
+        'trastorno alimenticio', 'anorexia', 'bulimia',
+        'adicción', 'sustancia', 'alcohol', 'droga', 'bebida',
+        'crisis', 'emergencia', 'ayuda', 'necesito ayuda',
+        'solo', 'sola', 'soledad', 'aislado', 'aislada', 'aislamiento',
+        'insomnio', 'problemas para dormir', 'pesadillas', 'no puedo dormir',
+        'medicación', 'medicamento', 'receta', 'antidepresivo'
     }
     
     OUT_OF_SCOPE_KEYWORDS = {
@@ -2716,16 +2846,25 @@ def run_pipeline():
                 # Keep original values but update symptoms to include clarification
                 symptoms = f"{user_concern}. {clarification}"
         
-        # Step 3.5: Empathetic acknowledgment with crisis detection
-        empathy_result = harbor_respond_with_empathy(user_name, user_concern, symptoms, category)
+        # Step 3.5: Detect language for appropriate responses
+        user_language = detect_language(user_concern)
+        
+        # Step 3.6: Empathetic acknowledgment with crisis detection
+        empathy_result = harbor_respond_with_empathy(user_name, user_concern, symptoms, category, user_language)
         is_crisis = empathy_result.get('is_crisis', False)
         
         # Show what we understood (unless it was already shown in crisis message)
         if not is_crisis:
-            print(f"✓ I understand you're looking for help with: {category}")
-            if symptoms:
-                print(f"✓ You mentioned: {symptoms[:100]}{'...' if len(symptoms) > 100 else ''}")
-            print()
+            if user_language == 'es':
+                print(f"✓ Entiendo que estás buscando ayuda con: {category}")
+                if symptoms:
+                    print(f"✓ Mencionaste: {symptoms[:100]}{'...' if len(symptoms) > 100 else ''}")
+                print()
+            else:
+                print(f"✓ I understand you're looking for help with: {category}")
+                if symptoms:
+                    print(f"✓ You mentioned: {symptoms[:100]}{'...' if len(symptoms) > 100 else ''}")
+                print()
             
             # Feature 7: Comprehensive Symptom Assessment (for non-crisis cases)
             # Ask targeted follow-up questions based on category
