@@ -1904,6 +1904,267 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
 
 
 # =====================================================
+# Intent Classification (Phase 3)
+# =====================================================
+
+def classify_user_intent_lightweight(user_message):
+    """
+    Lightweight intent classification with keyword-first approach.
+    
+    Classifies user intent into three categories:
+    - mental_health: Direct mental health concerns (anxiety, depression, therapy, etc.)
+    - related_but_out_of_scope: Related topics that could connect to mental health
+    - unrelated: Completely off-topic requests
+    
+    Uses keyword matching for 90% of cases (0 API calls), falls back to
+    Gemini only for ambiguous cases (10% of cases, 1 API call).
+    
+    Args:
+        user_message: User's message text
+    
+    Returns:
+        dict: {
+            'intent': str ('mental_health', 'related_but_out_of_scope', 'unrelated'),
+            'confidence': float (0.0-1.0),
+            'method': str ('keyword_match', 'gemini_fallback'),
+            'needs_redirect': bool (True if not mental_health)
+        }
+    """
+    message_lower = user_message.lower().strip()
+    
+    # Define keyword sets for each category
+    MENTAL_HEALTH_KEYWORDS = {
+        # Core mental health terms
+        'anxiety', 'anxious', 'panic', 'worried', 'worry', 'fear', 'scared',
+        'depression', 'depressed', 'sad', 'hopeless', 'suicidal', 'suicide',
+        'therapy', 'therapist', 'counseling', 'counselor', 'psychiatrist',
+        'mental health', 'mental', 'emotional', 'feeling', 'feelings',
+        'stress', 'stressed', 'overwhelmed', 'burnout', 'burned out',
+        'trauma', 'ptsd', 'abuse', 'grief', 'grieving', 'loss',
+        'self-harm', 'self harm', 'cutting', 'hurting myself',
+        'bipolar', 'schizophrenia', 'psychosis', 'hallucinations',
+        'ocd', 'obsessive', 'compulsive', 'intrusive thoughts',
+        'eating disorder', 'anorexia', 'bulimia', 'binge eating',
+        'addiction', 'substance', 'alcohol', 'drug', 'drinking',
+        'crisis', 'emergency', 'help me', 'need help',
+        'lonely', 'loneliness', 'isolated', 'isolation',
+        'insomnia', 'sleep problems', 'nightmares', 'cant sleep',
+        'medication', 'meds', 'prescription', 'antidepressant'
+    }
+    
+    OUT_OF_SCOPE_KEYWORDS = {
+        # Academic/scheduling (potential stress connection)
+        'schedule', 'class', 'classes', 'homework', 'assignment', 'exam',
+        'grade', 'grades', 'gpa', 'professor', 'teacher', 'course',
+        # Technical/IT
+        'password', 'login', 'wifi', 'computer', 'laptop', 'technical support',
+        'printer', 'software', 'app not working', 'website',
+        # General services
+        'weather', 'food', 'restaurant', 'directions', 'map',
+        'sports', 'game', 'movie', 'entertainment',
+        'parking', 'transportation', 'bus', 'train'
+    }
+    
+    STRESS_OVERLAP_KEYWORDS = {
+        'stress', 'stressed', 'overwhelmed', 'pressure', 'struggling',
+        'difficult', 'hard time', 'cant cope', 'too much'
+    }
+    
+    # Check for clear mental health indicators (high confidence)
+    mental_health_matches = sum(1 for keyword in MENTAL_HEALTH_KEYWORDS if keyword in message_lower)
+    if mental_health_matches >= 1:
+        return {
+            'intent': 'mental_health',
+            'confidence': min(0.9, 0.7 + (mental_health_matches * 0.1)),
+            'method': 'keyword_match',
+            'needs_redirect': False
+        }
+    
+    # Check for clear out-of-scope indicators
+    out_of_scope_matches = sum(1 for keyword in OUT_OF_SCOPE_KEYWORDS if keyword in message_lower)
+    stress_matches = sum(1 for keyword in STRESS_OVERLAP_KEYWORDS if keyword in message_lower)
+    
+    # Out-of-scope with NO stress indicators = clearly unrelated
+    if out_of_scope_matches >= 1 and stress_matches == 0:
+        return {
+            'intent': 'unrelated',
+            'confidence': 0.85,
+            'method': 'keyword_match',
+            'needs_redirect': True
+        }
+    
+    # Out-of-scope WITH stress indicators = ambiguous, use Gemini
+    if out_of_scope_matches >= 1 and stress_matches >= 1:
+        return classify_intent_with_gemini(user_message)
+    
+    # No clear keywords = ambiguous, use Gemini
+    if len(message_lower.split()) >= 3:  # Only use Gemini for substantial messages
+        return classify_intent_with_gemini(user_message)
+    
+    # Very short message with no matches = likely unrelated
+    return {
+        'intent': 'unrelated',
+        'confidence': 0.6,
+        'method': 'keyword_match',
+        'needs_redirect': True
+    }
+
+
+def classify_intent_with_gemini(user_message):
+    """
+    Use Gemini API to classify ambiguous intent.
+    
+    Only called for ~10% of cases where keyword matching is uncertain.
+    
+    Args:
+        user_message: User's message text
+    
+    Returns:
+        dict: Same structure as classify_user_intent_lightweight
+    """
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
+    except Exception as e:
+        # If Gemini unavailable, default to mental_health (safer than blocking)
+        return {
+            'intent': 'mental_health',
+            'confidence': 0.5,
+            'method': 'gemini_fallback_error',
+            'needs_redirect': False
+        }
+    
+    if not api_key:
+        return {
+            'intent': 'mental_health',
+            'confidence': 0.5,
+            'method': 'gemini_fallback_error',
+            'needs_redirect': False
+        }
+    
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    
+    prompt = f"""You are an intent classifier for a mental health support chatbot named Harbor.
+
+Classify the user's message into ONE of these categories:
+
+1. mental_health: User is seeking mental health support (anxiety, depression, therapy, crisis, etc.)
+2. related_but_out_of_scope: User mentions stress/struggle related to non-mental-health topics (academic scheduling, work stress, etc.) - could potentially connect to mental health
+3. unrelated: Completely off-topic (weather, sports, technical support, etc.)
+
+User message: "{user_message}"
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{{
+  "intent": "mental_health" or "related_but_out_of_scope" or "unrelated",
+  "confidence": 0.0-1.0,
+  "reasoning": "brief explanation"
+}}"""
+    
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+    params = {"key": api_key}
+    
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        
+        # Extract JSON from response
+        match = re.search(r'\{[\s\S]*\}', text)
+        if match:
+            classified = json.loads(match.group(0))
+            return {
+                'intent': classified.get('intent', 'mental_health'),
+                'confidence': float(classified.get('confidence', 0.7)),
+                'method': 'gemini_fallback',
+                'needs_redirect': classified.get('intent') != 'mental_health'
+            }
+    except Exception as e:
+        # Default to mental_health if Gemini fails (safer than blocking)
+        return {
+            'intent': 'mental_health',
+            'confidence': 0.5,
+            'method': 'gemini_fallback_error',
+            'needs_redirect': False
+        }
+
+
+def handle_out_of_scope_request(user_name, user_message, intent_result):
+    """
+    Gracefully handle out-of-scope requests with appropriate redirection.
+    
+    Args:
+        user_name: User's name
+        user_message: Original message
+        intent_result: Result from intent classification
+    
+    Returns:
+        bool: True if conversation should continue, False if should exit
+    """
+    intent = intent_result['intent']
+    
+    if intent == 'unrelated':
+        # Completely off-topic - polite redirect
+        print(f"\n🚢 Harbor: Hi {user_name}, I appreciate you reaching out!")
+        print("          However, I specialize specifically in mental health support.")
+        print("          I help people find therapists, counselors, and mental health")
+        print("          resources.\n")
+        print("          For your request, you might want to try:")
+        print("          • Your school's general help desk or student services")
+        print("          • A general AI assistant like ChatGPT or Google")
+        print("          • The specific service department for your question\n")
+        print("          If you're experiencing stress, anxiety, or other mental health")
+        print("          concerns, I'm here to help with that! Would you like to talk")
+        print("          about your mental health instead?\n")
+        
+        response = input("You: ").strip().lower()
+        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually']):
+            print(f"\n🚢 Harbor: Great! I'm here to listen. What's on your mind?\n")
+            return True
+        else:
+            print(f"\n🚢 Harbor: No problem, {user_name}. Take care, and feel free to come")
+            print("          back anytime you need mental health support! 💙\n")
+            return False
+    
+    elif intent == 'related_but_out_of_scope':
+        # Related topic - connect to mental health
+        print(f"\n🚢 Harbor: Thanks for sharing that, {user_name}.")
+        print("          I hear you're dealing with some challenges right now.\n")
+        print("          While I can't help directly with scheduling/classes/technical")
+        print("          issues, I do notice you might be experiencing stress or feeling")
+        print("          overwhelmed by this situation.\n")
+        print("          Sometimes when we're struggling with everyday challenges, it can")
+        print("          take a toll on our mental health. Would you like to talk about")
+        print("          how this is affecting you emotionally? I can help you find support")
+        print("          for managing stress, anxiety, or other feelings you might be having.\n")
+        
+        response = input("You: ").strip().lower()
+        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually', 'feel', 'stress', 'anxious', 'overwhelm']):
+            print(f"\n🚢 Harbor: I'm glad you're open to talking about this. Let's focus on")
+            print("          how you're feeling. Can you tell me more about what you're")
+            print("          experiencing emotionally?\n")
+            return True
+        else:
+            print(f"\n🚢 Harbor: That's okay, {user_name}. If you do find yourself feeling stressed,")
+            print("          anxious, or overwhelmed later, please come back. I'm here to help! 💙\n")
+            return False
+    
+    # mental_health intent - continue normally
+    return True
+
+
+# =====================================================
 # Gemini Classifier (Active)
 # =====================================================
 import json
@@ -2352,6 +2613,31 @@ def run_pipeline():
             if not user_concern:
                 print("Please share what's bringing you here today.\n")
         conversation_history.append({'role': 'USER', 'message': user_concern})
+        turn_count += 1
+    
+    # Step 2.5: Intent Classification (Phase 3)
+    print("\n" + "─"*70)
+    print("⚙️  Understanding your request...")
+    print("─"*70 + "\n")
+    
+    intent_result = classify_user_intent_lightweight(user_concern)
+    
+    # Handle out-of-scope requests gracefully
+    if intent_result['needs_redirect']:
+        should_continue = handle_out_of_scope_request(user_name, user_concern, intent_result)
+        if not should_continue:
+            return {'status': 'out_of_scope', 'intent': intent_result['intent']}
+        
+        # If user wants to continue, get their mental health concern
+        print("─"*70 + "\n")
+        mental_health_concern = ""
+        while not mental_health_concern:
+            mental_health_concern = input("You: ").strip()
+            if not mental_health_concern:
+                print("🚢 Harbor: Please share what's on your mind.\n")
+        
+        conversation_history.append({'role': 'USER', 'message': mental_health_concern})
+        user_concern = mental_health_concern
         turn_count += 1
     
     print("\n" + "─"*70)
