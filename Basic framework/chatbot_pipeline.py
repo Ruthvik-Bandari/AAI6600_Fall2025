@@ -584,6 +584,284 @@ Remember: Financial concerns should never prevent you from getting help.
     return info
 
 
+def display_online_resources():
+    """
+    Display comprehensive online mental health resources with direct website links.
+    
+    Organized by category for easy navigation. Includes telehealth platforms,
+    self-help apps, support communities, educational resources, and crisis chat services.
+    
+    Returns:
+        str: Formatted online resources with URLs
+    """
+    resources = """
+┌────────────────────────────────────────────────────────────────────┐
+│              🌐 ONLINE MENTAL HEALTH RESOURCES                     │
+└────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💻 TELEHEALTH & ONLINE THERAPY PLATFORMS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **BetterHelp** - Online Therapy Platform
+   Website: www.betterhelp.com
+   • Licensed therapists via video, phone, or messaging
+   • Financial aid available for those who qualify
+   • Get matched with a therapist in 24-48 hours
+
+🔹 **Talkspace** - Therapy & Psychiatry Online
+   Website: www.talkspace.com
+   • Therapy and medication management
+   • Insurance accepted for many plans
+   • Text, video, or audio messaging
+
+🔹 **MDLive** - Telehealth Services
+   Website: www.mdlive.com/behavioral-health
+   • Psychiatry and therapy services
+   • Often covered by insurance
+   • Same-day appointments available
+
+🔹 **Cerebral** - Online Mental Health Care
+   Website: www.cerebral.com
+   • Therapy and medication management
+   • Prescriptions delivered to your door
+   • Accepts insurance
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 MENTAL HEALTH APPS & SELF-HELP TOOLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **Headspace** - Meditation & Mindfulness
+   Website: www.headspace.com
+   • Guided meditation and mindfulness exercises
+   • Sleep sounds and focus music
+   • Stress and anxiety management tools
+
+🔹 **Calm** - Sleep & Meditation App
+   Website: www.calm.com
+   • Sleep stories and relaxation techniques
+   • Breathing exercises and guided meditations
+   • Anxiety and stress relief programs
+
+🔹 **Sanvello** - Mental Health Support App
+   Website: www.sanvello.com
+   • Mood tracking and cognitive behavioral therapy (CBT)
+   • Peer support community
+   • Premium features with insurance coverage
+
+🔹 **MoodKit** - CBT-Based Mood Improvement
+   Website: www.thriveport.com/products/moodkit
+   • Evidence-based CBT techniques
+   • Mood tracking and thought checker
+   • Activities to improve mental health
+
+🔹 **Woebot** - AI Mental Health Ally
+   Website: www.woebothealth.com
+   • Free AI-powered mental health support
+   • Evidence-based CBT conversations
+   • Available 24/7
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👥 ONLINE SUPPORT COMMUNITIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **7 Cups** - Free Emotional Support
+   Website: www.7cups.com
+   • Free, anonymous online chat support
+   • Trained volunteer listeners available 24/7
+   • Professional therapy available for a fee
+
+🔹 **NAMI Connection** - Peer Support Groups
+   Website: www.nami.org/Support-Education/Support-Groups/NAMI-Connection
+   • Free peer-led support groups (many virtual)
+   • Led by people with lived mental health experience
+   • Weekly meetings, no registration required
+
+🔹 **SMART Recovery** - Addiction Support
+   Website: www.smartrecovery.org
+   • Free online meetings for addiction recovery
+   • Science-based, self-empowering approach
+   • Multiple meetings daily
+
+🔹 **Depression and Bipolar Support Alliance (DBSA)**
+   Website: www.dbsalliance.org/support/chapters-and-support-groups
+   • Peer-led support groups (in-person and virtual)
+   • Free and confidential
+   • Recovery-focused community
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 EDUCATIONAL RESOURCES & INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **MentalHealth.gov** - Government Resource Portal
+   Website: www.mentalhealth.gov
+   • Comprehensive mental health information
+   • Treatment locator and helplines
+   • Resources for families and friends
+
+🔹 **National Institute of Mental Health (NIMH)**
+   Website: www.nimh.nih.gov
+   • Research-based mental health information
+   • Educational materials on all mental health conditions
+   • Clinical trials information
+
+🔹 **National Alliance on Mental Illness (NAMI)**
+   Website: www.nami.org
+   • Mental health education and advocacy
+   • Find Your Local NAMI for support
+   • Free educational programs and resources
+
+🔹 **Mental Health America (MHA)**
+   Website: www.mhanational.org
+   • Free mental health screening tools
+   • Educational resources and advocacy
+   • Community-based resources
+
+🔹 **Psych Central** - Mental Health Information
+   Website: www.psychcentral.com
+   • Articles and resources on mental health conditions
+   • Quizzes and self-assessments
+   • Expert-reviewed content
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 CRISIS CHAT & TEXT SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **988 Lifeline Chat** - Suicide Prevention Chat
+   Website: www.988lifeline.org/chat
+   • Free, confidential crisis chat
+   • Available 24/7
+   • Connect with trained crisis counselor
+
+🔹 **Crisis Text Line** - Text HOME to 741741
+   Website: www.crisistextline.org
+   • Free 24/7 crisis support via text
+   • Trained crisis counselors
+   • All issues welcome, not just suicide
+
+🔹 **IMAlive** - Online Crisis Chat
+   Website: www.imalive.org
+   • Free online crisis chat service
+   • Staffed by trained volunteers
+   • Available when you need support
+
+🔹 **Veterans Crisis Line Chat**
+   Website: www.veteranscrisisline.net/get-help-now/chat
+   • 24/7 confidential chat for veterans
+   • Also available via phone (988, press 1) or text (838255)
+   • Specialized support for veterans and their families
+
+────────────────────────────────────────────────────────────────────────
+💡 TIP: Many of these resources can be accessed from your phone, tablet,
+   or computer. Save your favorites for easy access when you need support.
+────────────────────────────────────────────────────────────────────────
+"""
+    return resources
+
+
+def display_followup_support(user_name, severity=None, has_insurance=False):
+    """
+    Display follow-up support recommendations based on user's situation.
+    
+    Provides severity-based timing recommendations and actionable next steps
+    to encourage continued engagement with mental health care.
+    
+    Args:
+        user_name: User's name for personalization
+        severity: Crisis severity level ('immediate', 'high', 'moderate', 'low', or None)
+        has_insurance: Whether user has health insurance
+    
+    Returns:
+        str: Formatted follow-up support message
+    """
+    # Determine follow-up timing based on severity
+    if severity == 'immediate':
+        timing = "TODAY - within the next few hours"
+        urgency_icon = "🚨"
+        priority = "URGENT"
+    elif severity == 'high':
+        timing = "within 24-48 hours"
+        urgency_icon = "⚠️"
+        priority = "HIGH PRIORITY"
+    elif severity == 'moderate':
+        timing = "within the next 3-5 days"
+        urgency_icon = "📌"
+        priority = "IMPORTANT"
+    else:
+        timing = "within the next week"
+        urgency_icon = "💙"
+        priority = "RECOMMENDED"
+    
+    message = f"""
+╔════════════════════════════════════════════════════════════════════╗
+║              {urgency_icon} FOLLOW-UP SUPPORT & NEXT STEPS               ║
+╚════════════════════════════════════════════════════════════════════╝
+
+{user_name}, you've taken an important first step by reaching out today.
+Here's what we recommend for your continued care:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 RECOMMENDED TIMELINE: {timing}
+   Priority Level: {priority}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ **Immediate Actions:**
+   1. Save the facility contacts provided above
+   2. Call at least 2-3 facilities to check availability
+   3. Ask about their first appointment availability
+   4. Confirm they accept your insurance (if applicable)
+
+✅ **Preparing for Your First Appointment:**
+   • Write down symptoms, concerns, and questions
+   • List any medications you're currently taking
+   • Bring your insurance card and photo ID
+   • Arrive 10-15 minutes early for paperwork
+   • Be honest and open - therapists are there to help, not judge
+
+✅ **While You Wait for Your Appointment:**
+   • Use the online resources and apps provided above
+   • Reach out to crisis support (988) if you need immediate help
+   • Practice self-care: sleep, nutrition, gentle exercise
+   • Stay connected with supportive friends or family
+   • Consider joining an online support group
+
+✅ **If You Can't Get an Appointment Right Away:**
+   • Ask to be placed on a cancellation waiting list
+   • Try multiple providers from the list above
+   • Contact your insurance for additional in-network providers
+   • Consider telehealth options (BetterHelp, Talkspace, Cerebral)
+"""
+
+    # Add insurance-specific guidance
+    if has_insurance:
+        message += """
+   • Call your insurance's behavioral health line for assistance
+   • Ask about Employee Assistance Programs (EAP) if you're employed
+"""
+    else:
+        message += """
+   • Check TheAdamProject.org for additional free providers
+   • Contact community health centers (sliding scale fees)
+   • Look into university training clinics (low-cost services)
+"""
+
+    message += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 REMEMBER: You can always call these crisis lines 24/7:
+   • 988 - Suicide & Crisis Lifeline
+   • Text HOME to 741741 - Crisis Text Line
+   • 911 - Emergency services
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💙 {user_name}, getting help is a sign of strength, not weakness.
+   You deserve support, and it's out there. Don't give up - keep reaching out.
+
+📧 Consider saving this information or taking a screenshot for your records.
+────────────────────────────────────────────────────────────────────────
+"""
+    return message
+
+
 # =====================================================
 # State Mapping and Location Parsing
 # =====================================================
@@ -2096,6 +2374,23 @@ def run_pipeline():
     print("🏥 Call 1-800-662-4357 (SAMHSA National Helpline)")
     print("💙 Visit www.TheAdamProject.org (1,300+ free providers nationwide)")
     print("═"*70 + "\n")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # Phase 4: Feature 12 - Comprehensive Online Resources
+    # ═══════════════════════════════════════════════════════════════
+    # Display comprehensive online mental health resources with direct website links
+    print(display_online_resources())
+    print()
+    
+    # ═══════════════════════════════════════════════════════════════
+    # Phase 4: Feature 11 - Follow-up Support Reminders
+    # ═══════════════════════════════════════════════════════════════
+    # Provide severity-based follow-up recommendations and next steps
+    crisis_severity = empathy_result.get('severity') if empathy_result.get('is_crisis') else None
+    has_user_insurance = additional_info.get('insurance', {}).get('has_insurance', False)
+    
+    print(display_followup_support(user_name, severity=crisis_severity, has_insurance=has_user_insurance))
+    print()
     
     return {
         'status': 'success',
