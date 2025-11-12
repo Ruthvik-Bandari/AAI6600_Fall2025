@@ -33,6 +33,7 @@ import re
 import json
 import requests
 import google.generativeai as genai
+from openai import OpenAI
 
 # =====================================================
 # Crisis Detection System (Hybrid: Keywords + Embeddings + Gemini)
@@ -49,6 +50,9 @@ import google.generativeai as genai
 # Global variables for crisis detection
 CRISIS_MODEL = None
 CRISIS_EMBEDDINGS = None
+
+# Global variable for HuggingFace fallback client (Phase 6 Enhancement)
+HF_CLIENT = None
 
 # Crisis reference phrases for semantic matching
 CRISIS_REFERENCE_PHRASES = [
@@ -106,6 +110,45 @@ def initialize_crisis_detection():
         print(f"⚠️  Warning: Could not initialize crisis detection: {e}")
         print("   Falling back to keyword + Gemini detection.\n")
         CRISIS_MODEL = False
+
+
+def initialize_huggingface_client():
+    """
+    Initialize HuggingFace client for API fallback.
+    Uses Qwen2.5-72B-Instruct for empathetic conversational responses.
+    Lazy loading - only initializes when first needed.
+    
+    Returns:
+        OpenAI client or None if initialization fails
+    """
+    global HF_CLIENT
+    
+    if HF_CLIENT is not None:
+        return HF_CLIENT
+    
+    try:
+        # Load HuggingFace token from config
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        with open(config_path) as f:
+            config = json.load(f)
+        hf_token = config.get("HF_TOKEN")
+        
+        if not hf_token:
+            print("⚠️  Warning: No HF_TOKEN found in config.json")
+            return None
+        
+        # Initialize OpenAI-compatible client for HuggingFace
+        HF_CLIENT = OpenAI(
+            base_url="https://router.huggingface.co/v1",
+            api_key=hf_token,
+        )
+        print("✓ HuggingFace fallback ready\n")
+        return HF_CLIENT
+        
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize HuggingFace client: {e}")
+        HF_CLIENT = False
+        return None
 
 
 def detect_crisis_semantic(user_message, threshold=0.65):
@@ -2005,6 +2048,67 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
 # Conversational Support System (Phase 6)
 # =====================================================
 
+def call_huggingface_conversational(user_name, user_message, detected_stress_type, stage, turn_count, max_turns):
+    """
+    Use HuggingFace API (Qwen2.5-72B-Instruct) as fallback for conversational responses.
+    
+    Args:
+        user_name: User's name
+        user_message: Latest user input
+        detected_stress_type: Type of stress detected (academic, work, etc.)
+        stage: Conversation stage (initial_support, deeper_exploration, resource_transition)
+        turn_count: Current turn number
+        max_turns: Maximum turns allowed
+    
+    Returns:
+        dict: {'response': str} or None if failed
+    """
+    # Initialize HF client if not already done
+    if HF_CLIENT is None:
+        initialize_huggingface_client()
+    
+    if HF_CLIENT is False or HF_CLIENT is None:
+        return None
+    
+    try:
+        # Build instruction based on stage
+        if stage == "initial_support":
+            instruction = f"Respond empathetically to {user_name}'s stress about {user_message}. Offer 2-3 brief, actionable tips. Ask an open question to understand their situation better. Keep it warm and conversational (2-4 sentences)."
+        elif stage == "deeper_exploration":
+            instruction = f"Acknowledge what {user_name} shared. Provide specific, practical advice for their {detected_stress_type} situation. Validate their feelings. Ask how they're coping. (2-4 sentences)"
+        else:  # resource_transition
+            instruction = f"Warmly acknowledge {user_name}'s situation with {detected_stress_type} stress. Connect how chronic stress affects mental health. Suggest talking to a professional could help develop coping strategies. Ask if they'd like help finding someone to talk to. Be gentle. (3-5 sentences)"
+        
+        # Call HuggingFace with OpenAI-compatible API
+        response = HF_CLIENT.chat.completions.create(
+            model="Qwen/Qwen2.5-72B-Instruct",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are Harbor, an empathetic mental health support chatbot for college students. Keep responses brief, warm, and supportive."
+                },
+                {
+                    "role": "user",
+                    "content": instruction
+                }
+            ],
+            max_tokens=400,
+            temperature=0.7,
+            stream=False
+        )
+        
+        harbor_response = response.choices[0].message.content.strip()
+        
+        return {
+            'response': harbor_response,
+            'source': 'huggingface'
+        }
+        
+    except Exception as e:
+        print(f"⚠️  HuggingFace API error: {str(e)[:150]}")
+        return None
+
+
 def harbor_conversational_response(user_name, user_concern, conversation_history, current_mode='supportive_dialogue', max_turns=3):
     """
     Engage in brief supportive conversation before transitioning to resources.
@@ -2171,7 +2275,73 @@ Respond ONLY with your message to the user (no JSON, no formatting, just the mes
                     }
         
         except Exception as e:
-            print(f"⚠️  Note: Conversation system had an issue ({e}). Using fallback.\n")
+            error_msg = str(e)
+            print(f"⚠️  Gemini API error: {error_msg[:100]}")
+            
+            # Try HuggingFace fallback before template fallback
+            if 'quota' in error_msg.lower() or '429' in error_msg or 'rate' in error_msg.lower():
+                print("🔄 Switching to HuggingFace fallback...\n")
+                
+                try:
+                    hf_result = call_huggingface_conversational(
+                        user_name=user_name,
+                        user_message=support_turns[-1] if support_turns else user_concern,
+                        detected_stress_type=detected_stress_type,
+                        stage=stage,
+                        turn_count=turn_count,
+                        max_turns=max_turns
+                    )
+                    
+                    if hf_result:
+                        # Display HuggingFace response
+                        print(f"🚢 Harbor: {hf_result['response']}\n")
+                        
+                        # Handle based on turn
+                        if turn_count < max_turns:
+                            user_response = input("You: ").strip()
+                            if not user_response:
+                                user_response = "..."
+                            support_turns.append(user_response)
+                            conversation_history.append({'role': 'BOT', 'message': hf_result['response']})
+                            conversation_history.append({'role': 'USER', 'message': user_response})
+                        else:
+                            # Final turn
+                            user_response = input("You: ").strip().lower()
+                            support_turns.append(user_response)
+                            conversation_history.append({'role': 'BOT', 'message': hf_result['response']})
+                            conversation_history.append({'role': 'USER', 'message': user_response})
+                            
+                            wants_resources = any(word in user_response for word in [
+                                'yes', 'sure', 'okay', 'yeah', 'yea', 'help', 'find', 'please',
+                                'would', 'that would', 'sounds good', 'i think so', 'i do'
+                            ])
+                            
+                            if wants_resources:
+                                print()
+                                return {
+                                    'conversation_summary': f"Discussed {detected_stress_type} stress via HuggingFace. {' '.join(support_turns[:2])}",
+                                    'ready_for_resources': True,
+                                    'updated_concern': f"{detected_stress_type} stress affecting mental health",
+                                    'conversation_history': conversation_history
+                                }
+                            else:
+                                print(f"\n🚢 Harbor: That's completely okay, {user_name}. If you change your mind")
+                                print("          or need support in the future, I'm here to help! 💙\n")
+                                return {
+                                    'conversation_summary': f"Provided support via HuggingFace. User declined resources.",
+                                    'ready_for_resources': False,
+                                    'updated_concern': user_concern,
+                                    'conversation_history': conversation_history
+                                }
+                        
+                        # Continue to next turn
+                        continue
+                        
+                except Exception as hf_error:
+                    print(f"⚠️  HuggingFace also unavailable: {str(hf_error)[:100]}")
+                    print("📋 Using template fallback...\n")
+            
+            # Both APIs failed, use template fallback
             return fallback_conversational_response(user_name, user_concern, turn_count)
     
     # Should not reach here, but just in case
