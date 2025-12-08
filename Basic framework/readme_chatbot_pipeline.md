@@ -3,13 +3,15 @@
 **AAI6600 Fall 2025**  
 **Authors:** Janet Garcia, Sharan Sandhu, Sneha Paul, Michael Zimmerman
 
-## 🔗 Dependencies (short)
+## 🔗 Dependencies 
 
 This project uses Python packages for data processing (e.g. pandas, numpy) and optional machine-learning/scoring packages (e.g. sentence-transformers, scikit-learn). See `DEPENDENCIES.md` for full details.
 
 
-## Google Gemini API Integration  (short)
-Quick Gemini setup (optional): follow `SETUP_GEMINI.md` for step-by-step instructions to configure Google Gemini (API key and config file).
+## API Integration for Gemini and HuggingFace 
+- Quick Gemini setup : follow `documentation/SETUP_GEMINI.md` for step-by-step instructions
+- Quick HuggingFace setup : follow `documentation/SETUP_HUGGINGFACE.md` for step-by-step instructions
+
 
 ---
 
