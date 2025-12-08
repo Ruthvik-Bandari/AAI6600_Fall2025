@@ -507,7 +507,7 @@ if __name__ == "__main__":
     current_dir = Path(__file__).parent
     
     # Example: Score facilities_final.csv (relative to Basic framework root)
-    data_dir = current_dir.parent / "Group3_dataset"
+    data_dir = current_dir.parent / "datasets"
     input_file = data_dir / "facilities_final.csv"
     output_file = data_dir / "facilities_scored.csv"
     
@@ -536,7 +536,7 @@ if __name__ == "__main__":
         print(f"WARNING: File not found: {input_file}")
         print("\nExpected structure:")
         print("  Basic framework/")
-        print("  ├── Group3_dataset/")
+        print("  ├── datasets/")
         print("  │   └── facilities_final.csv")
         print("  └── integrated/")
         print("      └── facility_scorer.py")

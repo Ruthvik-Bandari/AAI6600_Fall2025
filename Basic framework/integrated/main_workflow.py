@@ -56,7 +56,7 @@ class Group3MainWorkflow:
         
         # Data directory
         if data_dir is None:
-            self.data_dir = root_dir / "Group3_dataset"
+            self.data_dir = root_dir / "datasets"
         else:
             self.data_dir = Path(data_dir)
         
@@ -180,7 +180,7 @@ class Group3MainWorkflow:
         if needs_scoring and len(needs_scoring) > 0:
             output_path = self.data_dir / "all_facilities_scored.csv"
             self.facilities_df.to_csv(output_path, index=False, encoding='utf-8-sig')
-            print(f"💾 Merged scored results saved: all_facilities_scored.csv (in Group3_dataset/)")
+            print(f"💾 Merged scored results saved: all_facilities_scored.csv (in datasets/)")
         
         # Display state distribution
         if 'state' in self.facilities_df.columns:

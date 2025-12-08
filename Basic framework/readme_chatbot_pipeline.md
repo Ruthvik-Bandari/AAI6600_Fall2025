@@ -65,7 +65,7 @@ Basic framework/
 ├── integrated/
 │   ├── facility_scorer.py      # Facility matching and scoring system
 │   └── main_workflow.py        # Original menu-based workflow
-├── Group3_dataset/
+├── datasets/
 │   └── all_facilities_scored.csv  # Pre-scored facility database
 └── result_of_second_group/
     ├── test.py                 # Mock classification generator
@@ -126,7 +126,7 @@ ls -la
 # Should see: chatbot_pipeline.py, data_adapter.py, p1/, integrated/, etc.
 
 # Ensure pre-scored CSV exists
-ls Group3_dataset/all_facilities_scored.csv
+ls datasets/all_facilities_scored.csv
 ```
 
 ---
@@ -397,7 +397,7 @@ The system intelligently handles both 2-letter codes and full state names:
 ## 💾 Data Files
 
 ### all_facilities_scored.csv
-**Location:** `Group3_dataset/all_facilities_scored.csv`
+**Location:** `datasets/all_facilities_scored.csv`
 
 **Key Fields:**
 - `name` - Facility name
@@ -425,7 +425,7 @@ python3 -c "import sys; print(sys.path)"
 
 ### Missing CSV File
 ```
-⚠️  No pre-scored dataset found at Group3_dataset/all_facilities_scored.csv
+⚠️  No pre-scored dataset found at datasets/all_facilities_scored.csv
 ```
 **Solution:** Ensure CSV exists or run facility_scorer.py to generate it
 

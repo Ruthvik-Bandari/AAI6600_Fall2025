@@ -24,7 +24,7 @@ python -m pip install -r requirements.txt
 ```
 
 ## Dataset / data files used by the pipeline
-Files located in `Group3_dataset/` (used by the fast search / scoring pipeline):
+Files located in `datasets/` (used by the fast search / scoring pipeline):
 
 - `all_facilities_scored.csv` — pre-scored facilities CSV. The pipeline `chatbot_pipeline.py` prefers this file for the fast search path (no ML model required).
 - `facilities_final.csv` — final facility records (source data used for scoring/exports).
@@ -41,17 +41,17 @@ Files in `result_of_second_group/` (utilities / examples):
 - `test.py`, `test.txt` — miscellaneous test/example files
 
 ## Which scripts reference these files
-- `chatbot_pipeline.py` (entrypoint) — uses `Group3_dataset/all_facilities_scored.csv` for the fast search path (`fast_search_scored_csv`).
+- `chatbot_pipeline.py` (entrypoint) — uses `datasets/all_facilities_scored.csv` for the fast search path (`fast_search_scored_csv`).
 - `integrated/facility_scorer.py` — loads raw facility CSV(s) and (optionally) the sentence-transformers model to compute embeddings and scores. Use this if you want to re-score facilities (heavy step).
 - Tests under `tests/` use a small sample CSV (packaged in the test) to verify `fast_search_scored_csv` behavior.
 
 ## Quick recommendations
-- For interactive/demo runs: ensure `pandas` and `numpy` are installed; `all_facilities_scored.csv` should exist in `Group3_dataset/`.
+- For interactive/demo runs: ensure `pandas` and `numpy` are installed; `all_facilities_scored.csv` should exist in `datasets/`.
 - For production or re-scoring: install `sentence-transformers` and `scikit-learn` and ensure you have enough memory and a network connection (model downloads).
 - Fixed the filename `SAMHSA_cleaned.csv` (removed accidental space) to avoid issues when programmatically opening/globbing files.
 
 ## Clarification about the earlier second bullet point you asked about
-The second bullet in the todo was "List dependencies and data files" — it meant: identify (a) Python package dependencies needed to run the code, and (b) dataset files the pipeline expects (CSV files under `Group3_dataset/` and helper files under `result_of_second_group/`). This manifest consolidates both into one place.
+The second bullet in the todo was "List dependencies and data files" — it meant: identify (a) Python package dependencies needed to run the code, and (b) dataset files the pipeline expects (CSV files under `datasets/` and helper files under `result_of_second_group/`). This manifest consolidates both into one place.
 
 ---
 Generated: November 3, 2025

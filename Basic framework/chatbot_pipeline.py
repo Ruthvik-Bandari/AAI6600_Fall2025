@@ -3114,7 +3114,7 @@ def call_facility_matcher(classification, additional_info):
     print(f"💳 Insurance: {'Yes' if additional_info.get('insurance', {}).get('has_insurance') else 'No'}")
     print()
 
-    scored_csv = root_dir / "Group3_dataset" / "all_facilities_scored.csv"
+    scored_csv = root_dir / "datasets" / "all_facilities_scored.csv"
 
     if scored_csv.exists():
         print(f"Using pre-scored data: {scored_csv.name}")
