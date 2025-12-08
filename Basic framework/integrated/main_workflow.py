@@ -754,9 +754,9 @@ def main():
     
     if choice == '1':
         # TXT input mode
-        default_txt = root_dir / "result_of_second_group" / "test.txt"
+        default_txt = root_dir / "routing_results" / "test.txt"
         
-        print(f"\nDefault TXT file: test.txt (in result_of_second_group/)")
+        print(f"\nDefault TXT file: test.txt (in routing_results/)")
         use_default = input("Use default path? (y/n): ").strip().lower()
         
         if use_default == 'y':

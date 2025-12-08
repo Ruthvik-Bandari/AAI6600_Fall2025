@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Get paths relative to this script
 current_file = Path(__file__).resolve()
-current_dir = current_file.parent  # result_of_second_group/
+current_dir = current_file.parent  # routing_results/
 
 OUTPUT_DIR = current_dir
 OUTPUT_FILE = 'patient_case.txt'

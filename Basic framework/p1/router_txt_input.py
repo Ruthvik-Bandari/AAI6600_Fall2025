@@ -4,7 +4,7 @@ Group 3 TXT Version - Solution 2: Read Single Scenario from TXT File
 
 Reads TXT files provided by Group 2, extracts classification results and processes.
 
-Default file path: ../result_of_second_group/test.txt (relative to this file)
+Default file path: ../routing_results/test.txt (relative to this file)
 """
 
 import re
@@ -27,8 +27,8 @@ from group2_router import handle_group2_input
 # =====================================================
 
 # Default paths relative to Basic framework root
-DEFAULT_INPUT_FILE = root_dir / "result_of_second_group" / "test.txt"
-OUTPUT_DIR = root_dir / "result_of_second_group"
+DEFAULT_INPUT_FILE = root_dir / "routing_results" / "test.txt"
+OUTPUT_DIR = root_dir / "routing_results"
 GROUP3_SCRIPT = root_dir / "p2" / "Group3_script_base_version.py"
 
 # =====================================================

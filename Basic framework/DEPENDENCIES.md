@@ -34,7 +34,7 @@ Files located in `datasets/` (used by the fast search / scoring pipeline):
 - `Placesaffordablehealth_cleaned.csv` — cleaned place-level data.
 - `SAMHSA_cleaned.csv` — cleaned SAMHSA dataset (renamed to remove stray space in filename).
 
-Files in `result_of_second_group/` (utilities / examples):
+Files in `routing_results/` (utilities / examples):
 
 - `patient_case.txt` — sample patient case text
 - `generate_patient_case.py` — small script to produce example patient case(s)
@@ -51,7 +51,7 @@ Files in `result_of_second_group/` (utilities / examples):
 - Fixed the filename `SAMHSA_cleaned.csv` (removed accidental space) to avoid issues when programmatically opening/globbing files.
 
 ## Clarification about the earlier second bullet point you asked about
-The second bullet in the todo was "List dependencies and data files" — it meant: identify (a) Python package dependencies needed to run the code, and (b) dataset files the pipeline expects (CSV files under `datasets/` and helper files under `result_of_second_group/`). This manifest consolidates both into one place.
+The second bullet in the todo was "List dependencies and data files" — it meant: identify (a) Python package dependencies needed to run the code, and (b) dataset files the pipeline expects (CSV files under `datasets/` and helper files under `routing_results/`). This manifest consolidates both into one place.
 
 ---
 Generated: November 3, 2025
