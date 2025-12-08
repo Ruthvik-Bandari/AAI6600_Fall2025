@@ -432,17 +432,17 @@ def generate_other_test():
 # Import GROUP3/4/OTHER from router if needed
 # =====================================================
 
-# If group2_router.py exists, import from there
+# If classification_router.py exists, import from there
 try:
     # Add p1 folder to path
     p1_dir = root_dir / "p1"
     if str(p1_dir) not in sys.path:
         sys.path.insert(0, str(p1_dir))
     
-    from group2_router import GROUP3_CATEGORIES, GROUP4_CATEGORIES, OTHER_CATEGORIES
-    print("✓ Imported categories from group2_router.py")
+    from classification_router import GROUP3_CATEGORIES, GROUP4_CATEGORIES, OTHER_CATEGORIES
+    print("✓ Imported categories from classification_router.py")
 except ImportError:
-    print("⚠️  Could not import from group2_router.py, using local definitions")
+    print("⚠️  Could not import from classification_router.py, using local definitions")
     
     GROUP3_CATEGORIES = {
         'Mental health', 'Mental health support', 'Counseling',

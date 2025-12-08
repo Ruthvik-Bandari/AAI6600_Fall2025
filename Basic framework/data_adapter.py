@@ -3,7 +3,7 @@
 Data Adapter - Translation Layer for Multiple Input Sources
 
 This module standardizes data from different sources (LLM, mock classifier,
-TXT files) into a consistent format that group2_router.py expects.
+TXT files) into a consistent format that classification_router.py expects.
 
 Purpose:
 - Decouple input sources from routing logic
@@ -213,7 +213,7 @@ def adapt_llm_output(llm_data: Dict[str, Any]) -> Dict[str, Any]:
     Adapt Subgroup A's LLM output to standard format
     
     This function handles various possible formats from the LLM and
-    translates them to what group2_router expects.
+    translates them to what classification_router expects.
     
     Expected LLM output formats (flexible):
     - {'category': '...', 'confidence': ..., 'symptoms': '...'}

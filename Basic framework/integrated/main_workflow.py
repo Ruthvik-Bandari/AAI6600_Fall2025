@@ -25,7 +25,7 @@ if str(p1_dir) not in sys.path:
     sys.path.insert(0, str(p1_dir))
 
 # Import modules
-from group2_router import handle_group2_input
+from classification_router import handle_group2_input
 from router_txt_input import (
     parse_group2_txt,
     collect_location,

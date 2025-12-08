@@ -5,7 +5,7 @@ Mental Health Chatbot Pipeline - Main Entry Point
 This script orchestrates the complete chatbot flow:
 1. User conversation (via chatbot_interface.py)
 2. Classification (mock for now, real LLM later)
-3. Routing (via group2_router.py)
+3. Routing (via classification_router.py)
 4. Facility matching (if Group 3 category)
 
 Author: Subgroup B (Michael & Radhika)
@@ -26,7 +26,7 @@ sys.path.insert(0, str(p1_dir))
 sys.path.insert(0, str(integrated_dir))
 
 # Import existing modules
-from group2_router import handle_group2_input
+from classification_router import handle_group2_input
 import pandas as pd
 import numpy as np
 import re
@@ -3705,7 +3705,7 @@ def run_pipeline():
         print(f"\n🚢 Harbor: Thank you, {user_name}. I'm searching for the best resources")
         print(f"          to support you in {city}...\n")
     
-    # Step 5: Route using group2_router
+    # Step 5: Route using classification_router
     print("\n" + "┌" + "─"*68 + "┐")
     print("│" + " ⚙️  Step 3: Routing to Appropriate Services ".center(68) + "│")
     print("└" + "─"*68 + "┘\n")

@@ -14,13 +14,13 @@ import subprocess
 import json
 from pathlib import Path
 
-# Add relative path for group2_router
+# Add relative path for classification_router
 current_file = Path(__file__).resolve()
 current_dir = current_file.parent  # routing/
 root_dir = current_dir.parent  # Basic framework/
 
-# Import group2_router from same directory (routing/)
-from group2_router import handle_group2_input
+# Import classification_router from same directory (routing/)
+from classification_router import handle_group2_input
 
 # =====================================================
 # Configuration (Relative Paths)
