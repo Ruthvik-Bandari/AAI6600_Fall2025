@@ -26,7 +26,7 @@ sys.path.insert(0, str(p1_dir))
 sys.path.insert(0, str(integrated_dir))
 
 # Import existing modules
-from classification_router import handle_group2_input
+from routing.classification_router import handle_group2_input
 import pandas as pd
 import numpy as np
 import re
@@ -3157,7 +3157,7 @@ def call_facility_matcher(classification, additional_info):
             return None
 
     # No pre-scored CSV found
-    print("\n⚠️  No pre-scored dataset found at Group3_dataset/all_facilities_scored.csv.")
+    print("\n⚠️  No pre-scored dataset found at datasets/all_facilities_scored.csv.")
     print("Please add a scored CSV to that path or run scoring via integrated/facility_scorer.py")
     # If caller wants to run the full scorer, import it lazily so module import doesn't
     # immediately require heavy ML dependencies (sentence-transformers, etc.).
