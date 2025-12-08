@@ -506,7 +506,7 @@ if __name__ == "__main__":
     from pathlib import Path
     current_dir = Path(__file__).parent
     
-    # Example: Score facilities_final.csv (relative to Basic framework root)
+    # Example: Score facilities_final.csv (relative to pipeline1 root)
     data_dir = current_dir.parent / "datasets"
     input_file = data_dir / "facilities_final.csv"
     output_file = data_dir / "facilities_scored.csv"
@@ -535,7 +535,7 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print(f"WARNING: File not found: {input_file}")
         print("\nExpected structure:")
-        print("  Basic framework/")
+        print("  pipeline1/")
         print("  ├── datasets/")
         print("  │   └── facilities_final.csv")
         print("  └── integrated/")

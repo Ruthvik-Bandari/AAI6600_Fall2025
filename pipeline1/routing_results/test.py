@@ -18,7 +18,7 @@ from pathlib import Path
 # Get paths relative to this script
 current_file = Path(__file__).resolve()
 current_dir = current_file.parent  # routing_results/
-root_dir = current_dir.parent  # Basic framework/
+root_dir = current_dir.parent  # pipeline1/
 
 OUTPUT_DIR = current_dir
 OUTPUT_FILE = 'test.txt'

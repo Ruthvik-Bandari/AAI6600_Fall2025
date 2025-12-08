@@ -30,7 +30,7 @@ Summary of notable changes added in the most recent development cycle:
 - `data_adapter.py` extended to preserve optional structured fields returned by an LLM (for example: `symptoms`, `location`, and `insurance`) so downstream components can consume them.
 - Added a small smoke test `_smoke_test.py` to exercise the classification path quickly.
 - `requirements.txt` updated to include `openai` (optional dependency for the LLM path).
-- Repository cleanup: two large ZIP files were removed from history (backup branches were created on the remote first), the accidental space in `SAMHSA_cleaned .csv` was fixed, and `Basic framework_updated/` was untracked and added to `.gitignore`.
+- Repository cleanup: two large ZIP files were removed from history (backup branches were created on the remote first), the accidental space in `SAMHSA_cleaned .csv` was fixed, and `pipeline1_updated/` was untracked and added to `.gitignore`.
 - A review branch `update-from-Basic_framework_3-<timestamp>` was created and pushed so these updates can be reviewed in a PR before merging to `main`.
 
 ---
@@ -44,7 +44,7 @@ Conversation Interface (chatbot_interface.py)
     ↓
 Classification (Mock/LLM) → Data Adapter (data_adapter.py)
     ↓
-Routing (group2_router.py) → Group 3/4/Other Decision
+Routing (classification_router.py) → Group 3/4/Other Decision
     ↓
 [If Group 3] → Collect Location/Insurance
     ↓
@@ -58,18 +58,18 @@ Recommendations (Top 5 facilities with scores)
 ## 📁 Project Structure
 
 ```
-Basic framework/
+pipeline1/
 ├── chatbot_pipeline.py         # Main entry point - orchestrates full flow
 ├── chatbot_interface.py        # Terminal-based conversation interface
 ├── data_adapter.py             # Translation layer for multiple input sources
-├── p1/
-│   └── group2_router.py        # Routes categories to Group 3/4/Other
+├── routing/
+│   └── classification_router.py        # Routes categories to Group 3/4/Other
 ├── integrated/
 │   ├── facility_scorer.py      # Facility matching and scoring system
 │   └── main_workflow.py        # Original menu-based workflow
 ├── datasets/
 │   └── all_facilities_scored.csv  # Pre-scored facility database
-└── result_of_second_group/
+└── routing_results/
     ├── test.py                 # Mock classification generator
     └── test.txt                # Sample classification output
 ```
@@ -121,11 +121,11 @@ pip install pandas numpy
 ### Setup
 ```bash
 # Clone repository
-cd "/path/to/AAI6600_Group3/Basic framework"
+cd "/path/to/AAI6600_Group3/pipeline1"
 
 # Verify directory structure
 ls -la
-# Should see: chatbot_pipeline.py, data_adapter.py, p1/, integrated/, etc.
+# Should see: chatbot_pipeline.py, data_adapter.py, routing/, integrated/, etc.
 
 # Ensure pre-scored CSV exists
 ls datasets/all_facilities_scored.csv
@@ -353,7 +353,7 @@ python3 chatbot_pipeline.py
 - Clear visual distinction (>> user, << bot)
 - Mock conversation flow for testing
 
-### 4. group2_router.py (p1/)
+### 4. classification_router.py (routing/)
 **Purpose:** Routes categories to appropriate groups
 
 **Categories:**
@@ -418,8 +418,8 @@ The system intelligently handles both 2-letter codes and full state names:
 ### Import Errors
 ```bash
 # Ensure you're in correct directory
-cd "/Volumes/Transcend/AAI6600_Group3/Basic framework"
-pwd  # Should show: .../Basic framework
+cd "/Volumes/Transcend/AAI6600_Group3/pipeline1"
+pwd  # Should show: .../pipeline1
 
 # Check Python path
 python3 -c "import sys; print(sys.path)"
@@ -502,7 +502,7 @@ I couldn't recognize that state. Please enter 2-letter code or full state name
 
 ## 📞 Contact & Support
 
-**Project Repository:** AAI6600_Group3/Basic framework  
+**Project Repository:** AAI6600_Group3/pipeline1  
 **Course:** AAI6600 Fall 2025  
 **Institution:** [University Name]
 

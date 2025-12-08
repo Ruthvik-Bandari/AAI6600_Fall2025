@@ -17,7 +17,7 @@ from pathlib import Path
 # Add relative path for classification_router
 current_file = Path(__file__).resolve()
 current_dir = current_file.parent  # routing/
-root_dir = current_dir.parent  # Basic framework/
+root_dir = current_dir.parent  # pipeline1/
 
 # Import classification_router from same directory (routing/)
 from classification_router import handle_group2_input
@@ -26,7 +26,7 @@ from classification_router import handle_group2_input
 # Configuration (Relative Paths)
 # =====================================================
 
-# Default paths relative to Basic framework root
+# Default paths relative to pipeline1 root
 DEFAULT_INPUT_FILE = root_dir / "routing_results" / "test.txt"
 OUTPUT_DIR = root_dir / "routing_results"
 GROUP3_SCRIPT = root_dir / "p2" / "Group3_script_base_version.py"

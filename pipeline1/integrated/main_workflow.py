@@ -17,7 +17,7 @@ from pathlib import Path
 # Add relative paths
 current_file = Path(__file__).resolve()
 current_dir = current_file.parent  # integrated/
-root_dir = current_dir.parent  # Basic framework/
+root_dir = current_dir.parent  # pipeline1/
 
 # Add p1 folder to path
 p1_dir = root_dir / "p1"

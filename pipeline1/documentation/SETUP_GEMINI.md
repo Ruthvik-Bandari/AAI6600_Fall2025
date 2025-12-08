@@ -49,7 +49,7 @@ This guide will help you set up the Google Gemini API integration for the Mental
 
 1. **Navigate to the project directory**
    ```bash
-   cd "/path/to/AAI6600_Fall2025/Basic framework"
+   cd "/path/to/AAI6600_Fall2025/pipeline1"
    ```
 
 2. **Create config.json file**

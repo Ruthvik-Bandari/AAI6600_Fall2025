@@ -77,7 +77,7 @@ Tier 3: Template Responses (unlimited) ─► Last Resort
 
 1. **Open config.json:**
    ```bash
-   cd "Basic framework"
+   cd "pipeline1"
    nano config.json  # or use your preferred editor
    ```
 
@@ -110,7 +110,7 @@ pip install openai
 Run the test script to verify everything works:
 
 ```bash
-cd "Basic framework"
+cd "pipeline1"
 python test_huggingface_fallback.py
 ```
 
@@ -161,7 +161,7 @@ Error code: 403 - {'error': 'This authentication method does not have sufficient
 ```
 
 **Solution:**
-1. Check `config.json` exists in the `Basic framework` directory
+1. Check `config.json` exists in the `pipeline1` directory
 2. Verify the JSON format is correct (use https://jsonlint.com)
 3. Ensure the key is exactly `"HF_TOKEN"` (case-sensitive)
 4. Make sure the token starts with `hf_`
